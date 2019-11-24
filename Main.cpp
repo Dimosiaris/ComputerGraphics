@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <GL/freeglut.h>
 #include <time.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stbImage.h"
 
 
 
@@ -33,11 +35,47 @@ int xOrigin = -1;
 // Pop up menu identifiers
 int mainMenu;
 
-// scale of snowman
+// scale of cubes
 float scale = 1.0f;
 
 // menu status
 int menuFlag = 0;
+
+//the array for our texture //alec
+GLuint texture;
+void loadTextureFromFile(const char* filename)
+{
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+	//glShadeModel(GL_FLAT);
+	//glEnable(GL_DEPTH_TEST);
+
+	unsigned int texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	// set the texture wrapping/filtering options (on the currently bound texture object)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// load and generate the texture
+	int width, height, nrChannels;
+	unsigned char* data = stbi_load(filename, &width, &height, &nrChannels, 0);
+
+
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		//glGenerateMipmap(GL_TEXTURE_2D);
+		printf("Added texture %s \n", filename);
+	}
+	else
+	{
+		printf("Failed to load texture %s \n", filename);
+
+	}
+	stbi_image_free(data);
+}
+
 
 void initGL() {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Set background color to black and opaque
@@ -73,12 +111,63 @@ void changeSize(int w, int h) {
 	glMatrixMode(GL_MODELVIEW);
 }
 
-void drawCube() {
+void FreeTexture(GLuint texture)
+{
+	glDeleteTextures(1, &texture);
+}
 
-	glScalef(scale, scale, scale);
-	glColor3f(0.82f, 0.71f, 0.55f);
-	glTranslatef(1.0f, 0.0f, 0.0f);
-	glutSolidCube(1.0f);
+void drawCube(int randomint) {
+	if (menuFlag == 0) {
+		glScalef(scale, scale, scale);
+		glColor3f(0.82f, 0.71f, 0.55f);
+		glTranslatef(1.5f, 0.0f, 0.0f);
+		glutSolidCube(1.0f);
+	}
+	else if (menuFlag == 1) {
+
+		glBegin(GL_QUADS);				// start drawing the cube.
+
+		 // Front Face
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.5f, -0.5f, 0.5f);	// Bottom Left Of The Texture and Quad
+		glTexCoord2f(0.5f, 0.0f); glVertex3f(0.5f, -0.5f, 0.5f);	// Bottom Right Of The Texture and Quad
+		glTexCoord2f(0.5f, 0.5f); glVertex3f(0.5f, 0.5f, 0.5f);	// Top Right Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.5f); glVertex3f(-0.5f, 0.5f, 0.5f);	// Top Left Of The Texture and Quad
+
+		// Back Face
+		glTexCoord2f(0.5f, 0.0f); glVertex3f(-0.5f, -0.5f, -0.5f);	// Bottom Right Of The Texture and Quad
+		glTexCoord2f(0.5f, 0.5f); glVertex3f(-0.5f, 0.5f, -0.5f);	// Top Right Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.5f); glVertex3f(0.5f, 0.5f, -0.5f);	// Top Left Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(0.5f, -0.5f, -0.5f);	// Bottom Left Of The Texture and Quad
+
+		// Top Face
+		glTexCoord2f(0.0f, 0.5f); glVertex3f(-0.5f, 0.5f, -0.5f);	// Top Left Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.5f, 0.5f, 0.5f);	// Bottom Left Of The Texture and Quad
+		glTexCoord2f(0.5f, 0.0f); glVertex3f(0.5f, 0.5f, 0.5f);	// Bottom Right Of The Texture and Quad
+		glTexCoord2f(0.5f, 0.5f); glVertex3f(0.5f, 0.5f, -0.5f);	// Top Right Of The Texture and Quad
+
+		// Bottom Face
+		glTexCoord2f(0.5f, 0.5f); glVertex3f(-0.5f, -0.5f, -0.5f);	// Top Right Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.5f); glVertex3f(0.5f, -0.5f, -0.5f);	// Top Left Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(0.5f, -0.5f, 0.5f);	// Bottom Left Of The Texture and Quad
+		glTexCoord2f(0.5f, 0.0f); glVertex3f(-0.5f, -0.5f, 0.5f);	// Bottom Right Of The Texture and Quad
+
+		// Right face
+		glTexCoord2f(0.5f, 0.0f); glVertex3f(0.5f, -0.5f, -0.5f);	// Bottom Right Of The Texture and Quad
+		glTexCoord2f(0.5f, 0.5f); glVertex3f(0.5f, 0.5f, -0.5f);	// Top Right Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.5f); glVertex3f(0.5f, 0.5f, 0.5f);	// Top Left Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(0.5f, -0.5f, 0.5f);	// Bottom Left Of The Texture and Quad
+
+		// Left Face
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.5f, -0.5f, -0.5f);	// Bottom Left Of The Texture and Quad
+		glTexCoord2f(0.5f, 0.0f); glVertex3f(-0.5f, -0.5f, 0.5f);	// Bottom Right Of The Texture and Quad
+		glTexCoord2f(0.5f, 0.5f); glVertex3f(-0.5f, 0.5f, 0.5f);	// Top Right Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.5f); glVertex3f(-0.5f, 0.5f, -0.5f);	// Top Left Of The Texture and Quad
+
+		glEnd();
+
+		glFlush();
+		glDisable(GL_TEXTURE_2D);
+	}
 }
 
 void computeUpDownPos(float deltaMoveX) {
@@ -106,7 +195,7 @@ void renderScene(void) {
 
 	// Set the camera
 	gluLookAt(x, 35.0f, z,
-		x + lx, 1.0f, z ,
+		x + lx, 1.0f, z,
 		0.0f, 1.0f, 0.0f);
 
 	// Draw ground
@@ -124,17 +213,33 @@ void renderScene(void) {
 	sprintf_s(textMoves, "MOVES:");
 
 	// Draw 225 cubes
-	int randomint;
-	glColor3f(245.0f, 222.0f, 179.0f);
-	for (int i = 0; i < 15; i++) {
-		for (int j = 0; j < 15; j++) {
-			glPushMatrix();
-			glTranslatef(j * 1.5f, 0.0f, 0.0f);
-			randomint = (rand() % 4) + 1;	// TODO pass the randomint as a parameter to drawCube
-			drawCube();
-			glPopMatrix();
+	int randomint = 0;
+	if (menuFlag == 0) {
+		glColor3f(245.0f, 222.0f, 179.0f);
+		for (int i = 0; i < 15; i++) {
+			for (int j = 0; j < 15; j++) {
+				glPushMatrix();
+				glTranslatef(j * 1.5f, 0.0f, 0.0f);
+				drawCube(0);
+				glPopMatrix();
+			}
+			glTranslatef(0.0f, 0.0f, 1.5f);
 		}
-		glTranslatef(0.0f, 0.0f, 1.5f);
+	} //TODO FIX //alec
+	else if (menuFlag == 1) {
+
+		for (int i = 0; i < 15; i++) {
+			for (int j = 0; j < 15; j++) {
+				glPushMatrix();
+				glTranslatef(j * 1.5f, 0.0f, 0.0f);
+				randomint = (rand() % 4) + 1;
+				drawCube(randomint);
+				glPopMatrix();
+			}
+			glTranslatef(0.0f, 0.0f, 1.5f);
+		}
+
+
 	}
 	glutSwapBuffers();
 }
@@ -227,9 +332,11 @@ void processMainMenu(int option) {
 
 	switch (option) {
 
-	case STARTGAME: break;	// TODO ATTACH A FUCTION THAT WILL CALL THE ACTUAL GAME
+	case STARTGAME:
+		menuFlag = 1; // new;
+		break;	// TODO ATTACH A FUCTION THAT WILL CALL THE ACTUAL GAME
 	case EXIT:
-		glutDestroyMenu(mainMenu); 
+		glutDestroyMenu(mainMenu);
 		exit(0);
 		break;
 	}
@@ -245,13 +352,14 @@ void createPopupMenus() {
 	// attach the menu to the right button
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 
+
 }
 
 // -----------------------------------
 //             MAIN
 // -----------------------------------
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
 
 	// Initialize rand
 	srand(time(NULL));
@@ -262,6 +370,15 @@ int main(int argc, char **argv) {
 	glutInitWindowPosition(250, 75);
 	glutInitWindowSize(600, 600);
 	glutCreateWindow("VRahapsa III");
+
+
+	//Loading all the texture files //alec
+	loadTextureFromFile("scissors.bmp");
+	loadTextureFromFile("rock.bmp");
+	loadTextureFromFile("paper.bmp");
+	loadTextureFromFile("red.bmp");
+	loadTextureFromFile("blue.bmp");
+
 
 	// register callbacks
 	glutDisplayFunc(renderScene);
@@ -287,9 +404,12 @@ int main(int argc, char **argv) {
 	createPopupMenus();
 
 	initGL();
-	
+
 	// enter GLUT event processing cycle
 	glutMainLoop();
+
+	//Free our texture //alec
+	FreeTexture(texture);
 
 	return 1;
 }
