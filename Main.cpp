@@ -2,11 +2,20 @@
 #include <GL/glut.h>  // GLUT, include glu.h and gl.h
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <GL/freeglut.h>
 #include <time.h>
 #define STB_IMAGE_IMPLEMENTATION
-#include "stbImage.h"
+#include "stb_image.h"
+#include <iostream>
 
+#define RED 0
+#define BLUE 1
+#define ROCK 2
+#define PAPER 3
+#define SCISSORS 4
+
+GLuint texture; //the array for our texture
 
 
 // angle of rotation for the camera direction
@@ -39,22 +48,22 @@ int mainMenu;
 float scale = 1.0f;
 
 // menu status
-int menuFlag = 0;
+int gameStarted = 0;
 
 //the array for our texture //alec
-GLuint texture;
+
 void loadTextureFromFile(const char* filename)
 {
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	//glShadeModel(GL_FLAT);
-	//glEnable(GL_DEPTH_TEST);
+	glEnable(GL_DEPTH_TEST);
 
-	unsigned int texture;
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	// set the texture wrapping/filtering options (on the currently bound texture object)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	// load and generate the texture
@@ -116,15 +125,40 @@ void FreeTexture(GLuint texture)
 	glDeleteTextures(1, &texture);
 }
 
-void drawCube(int randomint) {
-	if (menuFlag == 0) {
+void drawCube(int color) {
+	if (color == 5) {
 		glScalef(scale, scale, scale);
 		glColor3f(0.82f, 0.71f, 0.55f);
 		glTranslatef(1.5f, 0.0f, 0.0f);
 		glutSolidCube(1.0f);
 	}
-	else if (menuFlag == 1) {
-
+	else{
+		switch (color){
+		case RED:
+			loadTextureFromFile("red.bmp");
+			break;
+		case BLUE:
+			loadTextureFromFile("blue.bmp");
+			break;
+		case ROCK:
+			loadTextureFromFile("rock.png");
+			break;
+		case PAPER:
+			loadTextureFromFile("paper.png");
+			break;
+		case SCISSORS:
+			loadTextureFromFile("scissors.png");
+			break;
+			
+		default:
+			glScalef(scale, scale, scale);
+			glColor3f(0.82f, 0.71f, 0.55f);
+			glTranslatef(1.5f, 0.0f, 0.0f);
+			glutSolidCube(1.0f);
+			return;
+			break;
+		}
+		glEnable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);				// start drawing the cube.
 
 		 // Front Face
@@ -181,17 +215,20 @@ void computeLeftRightPos(float deltaMoveZ) {
 
 
 void renderScene(void) {
-
+	
 	if (deltaMoveZ)
 		computeUpDownPos(deltaMoveZ);
 	if (deltaMoveX)
 		computeLeftRightPos(deltaMoveX);
 
+	glEnable(GL_DEPTH_TEST);
 	// Clear Color and Depth Buffers
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Reset transformations
 	glLoadIdentity();
+
+	glEnable(GL_TEXTURE_2D);
 
 	// Set the camera
 	gluLookAt(x, 35.0f, z,
@@ -208,38 +245,35 @@ void renderScene(void) {
 	glVertex3f(100.0f, 0.0f, -100.0f);
 	glEnd();
 
-	glColor3f(1.0f, 0.0f, 0.0f);
+	glColor3f(1.0f, 1.0f, 1.0f);
 	char textMoves[20];
 	sprintf_s(textMoves, "MOVES:");
 
 	// Draw 225 cubes
 	int randomint = 0;
-	if (menuFlag == 0) {
+	if (gameStarted == 0) {
 		glColor3f(245.0f, 222.0f, 179.0f);
 		for (int i = 0; i < 15; i++) {
 			for (int j = 0; j < 15; j++) {
 				glPushMatrix();
 				glTranslatef(j * 1.5f, 0.0f, 0.0f);
-				drawCube(0);
+				drawCube(5);
 				glPopMatrix();
 			}
 			glTranslatef(0.0f, 0.0f, 1.5f);
 		}
-	} //TODO FIX //alec
-	else if (menuFlag == 1) {
-
+	} 
+	else{
 		for (int i = 0; i < 15; i++) {
 			for (int j = 0; j < 15; j++) {
 				glPushMatrix();
 				glTranslatef(j * 1.5f, 0.0f, 0.0f);
-				randomint = (rand() % 4) + 1;
+				randomint = (rand() % 4);
 				drawCube(randomint);
 				glPopMatrix();
 			}
 			glTranslatef(0.0f, 0.0f, 1.5f);
 		}
-
-
 	}
 	glutSwapBuffers();
 }
@@ -333,7 +367,7 @@ void processMainMenu(int option) {
 	switch (option) {
 
 	case STARTGAME:
-		menuFlag = 1; // new;
+		gameStarted = 1; // new;
 		break;	// TODO ATTACH A FUCTION THAT WILL CALL THE ACTUAL GAME
 	case EXIT:
 		glutDestroyMenu(mainMenu);
@@ -372,14 +406,6 @@ int main(int argc, char** argv) {
 	glutCreateWindow("VRahapsa III");
 
 
-	//Loading all the texture files //alec
-	loadTextureFromFile("scissors.bmp");
-	loadTextureFromFile("rock.bmp");
-	loadTextureFromFile("paper.bmp");
-	loadTextureFromFile("red.bmp");
-	loadTextureFromFile("blue.bmp");
-
-
 	// register callbacks
 	glutDisplayFunc(renderScene);
 	glutReshapeFunc(changeSize);
@@ -404,6 +430,15 @@ int main(int argc, char** argv) {
 	createPopupMenus();
 
 	initGL();
+	/*
+	
+	//Loading all the texture files //alec
+	loadTextureFromFile("scissors.bmp");
+	loadTextureFromFile("rock.bmp");
+	loadTextureFromFile("paper.bmp");
+	loadTextureFromFile("red.bmp");
+	loadTextureFromFile("blue.bmp");
+	*/
 
 	// enter GLUT event processing cycle
 	glutMainLoop();
