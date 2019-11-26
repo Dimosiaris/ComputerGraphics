@@ -15,7 +15,13 @@
 #define PAPER 3
 #define SCISSORS 4
 
-GLuint texture; //the array for our texture
+// Constant definitions for Menus
+
+#define STARTGAME 1
+#define EXIT 2
+
+
+GLuint textures[5]; //the array for our texture
 
 
 // angle of rotation for the camera direction
@@ -34,10 +40,6 @@ float deltaMoveX = 0;
 float deltaMoveZ = 0;
 int xOrigin = -1;
 
-// Constant definitions for Menus
-
-#define STARTGAME 1
-#define EXIT 2
 
 
 
@@ -50,16 +52,45 @@ float scale = 1.0f;
 // menu status
 int gameStarted = 0;
 
-//the array for our texture //alec
+// textures initialized
+int gameInitialized = 0;
 
-void loadTextureFromFile(const char* filename)
+// Moves of the player
+int moves = 0;
+
+// Score of the player
+int score = 0;
+
+
+// the main matrix of the game
+struct cube {
+	int row;
+	int column;
+	int color;
+	float x;
+	float z;
+}cubes[15][15];
+
+
+
+
+void drawString(float x, float y, float z, char* string) {
+	glRasterPos3f(x, y, z);
+
+	for (char* c = string; *c != '\0'; c++) {
+		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);  // Updates the position
+	}
+}
+
+void loadTextureFromFile(const char* filename, int i)
 {
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	//glShadeModel(GL_FLAT);
 	glEnable(GL_DEPTH_TEST);
-
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
+	 
+	
+	glGenTextures(1, textures+i);
+	glBindTexture(GL_TEXTURE_2D, textures[i]);
 	// set the texture wrapping/filtering options (on the currently bound texture object)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -82,7 +113,7 @@ void loadTextureFromFile(const char* filename)
 		printf("Failed to load texture %s \n", filename);
 
 	}
-	stbi_image_free(data);
+	//stbi_image_free(data);
 }
 
 
@@ -93,7 +124,25 @@ void initGL() {
 	glDepthFunc(GL_LEQUAL);    // Set the type of depth-test
 	glShadeModel(GL_SMOOTH);   // Enable smooth shading
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);  // Nice perspective corrections
+	int randomint;
+	if (gameInitialized == 0) {
+		for (int i = 0; i < 15; i++) {
+			for (int j = 0; j < 15; j++) {
+				randomint = (rand() % 4);
+				cubes[i][j].color = randomint;
+				cubes[i][j].row = i;
+				cubes[i][j].column = j; 
+			}
+		}
+		loadTextureFromFile("scissors.bmp",SCISSORS);
+		loadTextureFromFile("rock.bmp", ROCK);
+		loadTextureFromFile("paper.bmp", PAPER);
+		loadTextureFromFile("red.bmp", RED);
+		loadTextureFromFile("blue.bmp", BLUE);
+		gameInitialized = 1;
+	}
 }
+	
 
 void changeSize(int w, int h) {
 
@@ -127,40 +176,18 @@ void FreeTexture(GLuint texture)
 
 void drawCube(int color) {
 	if (color == 5) {
+		glDisable(GL_TEXTURE_2D);
 		glScalef(scale, scale, scale);
 		glColor3f(0.82f, 0.71f, 0.55f);
 		glTranslatef(1.5f, 0.0f, 0.0f);
 		glutSolidCube(1.0f);
+		return;
 	}
 	else{
-		switch (color){
-		case RED:
-			loadTextureFromFile("red.bmp");
-			break;
-		case BLUE:
-			loadTextureFromFile("blue.bmp");
-			break;
-		case ROCK:
-			loadTextureFromFile("rock.png");
-			break;
-		case PAPER:
-			loadTextureFromFile("paper.png");
-			break;
-		case SCISSORS:
-			loadTextureFromFile("scissors.png");
-			break;
-			
-		default:
-			glScalef(scale, scale, scale);
-			glColor3f(0.82f, 0.71f, 0.55f);
-			glTranslatef(1.5f, 0.0f, 0.0f);
-			glutSolidCube(1.0f);
-			return;
-			break;
-		}
+		
 		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, textures[color]);
 		glBegin(GL_QUADS);				// start drawing the cube.
-
 		 // Front Face
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.5f, -0.5f, 0.5f);	// Bottom Left Of The Texture and Quad
 		glTexCoord2f(0.5f, 0.0f); glVertex3f(0.5f, -0.5f, 0.5f);	// Bottom Right Of The Texture and Quad
@@ -206,11 +233,11 @@ void drawCube(int color) {
 
 void computeUpDownPos(float deltaMoveX) {
 
-	x += deltaMoveX * lx * 0.1f;
+	x += deltaMoveX * lx * 0.5f;
 }
 void computeLeftRightPos(float deltaMoveZ) {
 
-	z += deltaMoveZ * lz * 0.1f;
+	z += deltaMoveZ * lz * 0.5f;
 }
 
 
@@ -244,10 +271,12 @@ void renderScene(void) {
 	glVertex3f(100.0f, 0.0f, 100.0f);
 	glVertex3f(100.0f, 0.0f, -100.0f);
 	glEnd();
-
-	glColor3f(1.0f, 1.0f, 1.0f);
 	char textMoves[20];
-	sprintf_s(textMoves, "MOVES:");
+	sprintf_s(textMoves, "Moves: %d", moves);
+	glColor3f(1.0f, 0.30f, 1.0f);
+	drawString(24.0, 0.0, 20.0, textMoves);
+	glColor3f(1.0f, 1.0f, 1.0f);
+	
 
 	// Draw 225 cubes
 	int randomint = 0;
@@ -268,13 +297,13 @@ void renderScene(void) {
 			for (int j = 0; j < 15; j++) {
 				glPushMatrix();
 				glTranslatef(j * 1.5f, 0.0f, 0.0f);
-				randomint = (rand() % 4);
-				drawCube(randomint);
+				drawCube(cubes[i][j].color);
 				glPopMatrix();
 			}
 			glTranslatef(0.0f, 0.0f, 1.5f);
 		}
 	}
+
 	glutSwapBuffers();
 }
 
@@ -367,7 +396,7 @@ void processMainMenu(int option) {
 	switch (option) {
 
 	case STARTGAME:
-		gameStarted = 1; // new;
+		gameStarted = 1; 
 		break;	// TODO ATTACH A FUCTION THAT WILL CALL THE ACTUAL GAME
 	case EXIT:
 		glutDestroyMenu(mainMenu);
@@ -430,21 +459,11 @@ int main(int argc, char** argv) {
 	createPopupMenus();
 
 	initGL();
-	/*
 	
-	//Loading all the texture files //alec
-	loadTextureFromFile("scissors.bmp");
-	loadTextureFromFile("rock.bmp");
-	loadTextureFromFile("paper.bmp");
-	loadTextureFromFile("red.bmp");
-	loadTextureFromFile("blue.bmp");
-	*/
-
 	// enter GLUT event processing cycle
 	glutMainLoop();
 
-	//Free our texture //alec
-	FreeTexture(texture);
+	
 
 	return 1;
 }
