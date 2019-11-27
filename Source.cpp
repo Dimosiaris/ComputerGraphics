@@ -9,19 +9,33 @@
 #include "stb_image.h"
 #include <iostream>
 
+//alec
+#ifdef LINUX
+#include <unistd.h>
+#endif
+#ifdef WINDOWS
+#include <windows.h>
+#endif
+
+
+
 #define RED 0
 #define BLUE 1
 #define ROCK 2
 #define PAPER 3
 #define SCISSORS 4
+#define BOMB 5 //alec
+#define BLACK 6
+#define EXPLOSION 7
+
 
 // Constant definitions for Menus
 
 #define STARTGAME 1
 #define EXIT 2
 
-
-GLuint textures[5]; //the array for our texture
+//alec : made it 6
+GLuint textures[6]; //the array for our texture
 
 
 // angle of rotation for the camera direction
@@ -116,6 +130,46 @@ void loadTextureFromFile(const char* filename, int i)
 	//stbi_image_free(data);
 }
 
+//alec
+
+void mySleep(int sleepMs)
+{
+#ifdef LINUX
+	sleep();   
+#endif
+#ifdef WINDOWS
+	Sleep();
+#endif
+}
+
+//alec : 
+void explosion(cube cube)  {
+	cube.color = EXPLOSION;
+	mySleep(2);
+	cube.color = BLACK;
+}
+
+//alec 5% chance for bomb
+int textureChooser() {
+	float a = rand() / float(RAND_MAX);
+	if (a < 0.19)
+		return 0;
+	else if (a < 0.38)
+		return 1;
+	else if (a < 0.57)
+		return 2;
+	else if (a < 0.76)
+		return 3;
+	else if (a < 0.95)
+		return 4;
+
+	return 5;
+
+
+
+
+
+}
 
 void initGL() {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Set background color to black and opaque
@@ -128,18 +182,25 @@ void initGL() {
 	if (gameInitialized == 0) {
 		for (int i = 0; i < 15; i++) {
 			for (int j = 0; j < 15; j++) {
-				randomint = (rand() % 5); //alec for sure
+				randomint = textureChooser(); //alec for sure
 				cubes[i][j].color = randomint;
 				cubes[i][j].row = i;
 				cubes[i][j].column = j;
 			}
 		}
-		//alec
+		//alec : changed the names of the files
+		
 		loadTextureFromFile("scissors.jpg", SCISSORS);
 		loadTextureFromFile("rock.jpg", ROCK);
 		loadTextureFromFile("paper.jpg", PAPER);
 		loadTextureFromFile("red.bmp", RED);
 		loadTextureFromFile("blue.bmp", BLUE);
+
+		loadTextureFromFile("bomb.jpg", BOMB); //alec :BONUS
+		loadTextureFromFile("explosion.jpg", EXPLOSION);
+		loadTextureFromFile("black.jpg", BLACK);
+		
+
 		gameInitialized = 1;
 	}
 }
@@ -175,8 +236,12 @@ void FreeTexture(GLuint texture)
 	glDeleteTextures(1, &texture);
 }
 
+
+
+
+
 void drawCube(int color) {
-	if (color == 5) {
+	if (color == -1) {
 		glDisable(GL_TEXTURE_2D);
 		glScalef(scale, scale, scale);
 		glColor3f(0.82f, 0.71f, 0.55f);
@@ -290,7 +355,7 @@ void renderScene(void) {
 			for (int j = 0; j < 15; j++) {
 				glPushMatrix();
 				glTranslatef(j * 1.5f, 0.0f, 0.0f);
-				drawCube(5);
+				drawCube(-1); //color is the beige
 				glPopMatrix();
 			}
 			glTranslatef(0.0f, 0.0f, 1.5f);
