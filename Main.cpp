@@ -5,9 +5,9 @@
 #include <stdlib.h>
 #include <GL/freeglut.h>
 #include <time.h>
+#include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-#include <iostream>
 
 #define RED 0
 #define BLUE 1
@@ -22,10 +22,11 @@
 
 
 GLuint textures[5]; //the array for our texture
+GLdouble ox = 0.0, oy = 0.0, oz = 0.0; // coordinates
 
-
-// angle of rotation for the camera direction
-float angle = 1.0f;
+// The previous choice of the matrix
+int prex = -1;
+int prez = -1;
 
 // actual vector representing the camera's direction
 float lx = 1.0f, lz = 1.0f;
@@ -35,13 +36,9 @@ float x = 9.5f, z = 10.5f;
 
 // the key states. These variables will be zero
 //when no key is being presses
-float deltaAngle = 0.0f;
 float deltaMoveX = 0;
 float deltaMoveZ = 0;
 int xOrigin = -1;
-
-
-
 
 // Pop up menu identifiers
 int mainMenu;
@@ -54,6 +51,9 @@ int gameStarted = 0;
 
 // textures initialized
 int gameInitialized = 0;
+
+// The counter of clicks
+int clicks = 0;
 
 // Moves of the player
 int moves = 0;
@@ -71,8 +71,16 @@ struct cube {
 	float z;
 }cubes[15][15];
 
-
-
+// The world coordinates that the mouse returns to us to matrix position for x
+int worldToMatrixCoordx(float x) {
+	x -= 1;
+	return (int)floor(x - ((floor(x / 1.5) / 2)));	// Copyrights Dimosiaris
+}
+// The world coordinates that the mouse returns to us to matrix position for z
+int worldToMatrixCoordz(float z) {
+	z += 23;
+	return (int)floor(z - ((floor(z / 1.5) / 2))); // Copyrights Dimosiaris
+}
 
 void drawString(float x, float y, float z, char* string) {
 	glRasterPos3f(x, y, z);
@@ -128,7 +136,7 @@ void initGL() {
 	if (gameInitialized == 0) {
 		for (int i = 0; i < 15; i++) {
 			for (int j = 0; j < 15; j++) {
-				randomint = (rand() % 4);
+				randomint = (rand() % 5);
 				cubes[i][j].color = randomint;
 				cubes[i][j].row = i;
 				cubes[i][j].column = j; 
@@ -146,12 +154,11 @@ void initGL() {
 
 void changeSize(int w, int h) {
 
-	// Prevent a divide by zero, when window is too short
-	// (you cant make a window of zero width).
+	// Prevent a divide by zero, when window is too short (you cant make a window of zero width).
 	if (h == 0)
 		h = 1;
 
-	float ratio = w * 1.0 / h;
+	float ratio = (float)w * 1.0 / (float)h;
 
 	// Use the Projection Matrix
 	glMatrixMode(GL_PROJECTION);
@@ -159,8 +166,10 @@ void changeSize(int w, int h) {
 	// Reset Matrix
 	glLoadIdentity();
 
+
+	
 	// Set the viewport to be the entire window
-	glViewport(0, 0, w, h);
+	glViewport(x, z, w, h);
 
 	// Set the correct perspective.
 	gluPerspective(45.0f, ratio, 0.1f, 100.0f);
@@ -262,15 +271,7 @@ void renderScene(void) {
 		x + lx, 1.0f, z,
 		0.0f, 1.0f, 0.0f);
 
-	// Draw ground
 
-	glColor3f(0.0f, 0.0f, 0.0f);
-	glBegin(GL_QUADS);
-	glVertex3f(-100.0f, 0.0f, -100.0f);
-	glVertex3f(-100.0f, 0.0f, 100.0f);
-	glVertex3f(100.0f, 0.0f, 100.0f);
-	glVertex3f(100.0f, 0.0f, -100.0f);
-	glEnd();
 	char textMoves[20];
 	sprintf_s(textMoves, "Moves: %d", moves);
 	glColor3f(1.0f, 0.30f, 1.0f);
@@ -303,7 +304,12 @@ void renderScene(void) {
 			glTranslatef(0.0f, 0.0f, 1.5f);
 		}
 	}
+	glPopMatrix();
 
+	glPushMatrix();
+
+	glDepthMask(GL_FALSE);
+	
 	glutSwapBuffers();
 }
 
@@ -350,6 +356,104 @@ void releaseKey(int key, int x, int y) {
 //             MOUSE
 // -----------------------------------
 
+void Mouse(int button, int state, int x, int y) {
+
+	GLint viewport[4];
+
+	GLdouble modelview[16], projection[16];
+
+	GLfloat wx = x, wy, wz;
+
+	if (state != GLUT_DOWN)
+
+		return;
+
+	if (button == GLUT_RIGHT_BUTTON)
+
+		exit(0);
+	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+		glGetIntegerv(GL_VIEWPORT, viewport); // returns x, y, height, width
+
+		y = viewport[3] - y;	// height - y
+
+		wy = y;
+
+		glGetDoublev(GL_MODELVIEW_MATRIX, modelview); // for the transformations
+
+		glGetDoublev(GL_PROJECTION_MATRIX, projection); // what we see
+
+		glReadPixels(x, y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &wz); // get the z
+
+
+		gluUnProject(wx, wy, wz, modelview, projection, viewport, &ox, &oy, &oz); // the final coordinates
+
+		//glutPostRedisplay();
+		printf("(x, y, z) in world coordinates is:(%f, %f)\n", ox, oz);
+		
+		
+	}
+	
+
+}
+// Checks if the click was the first one, if the cubes selected are in the same column or row and if so calls the explosion function
+void checkClick(float oz, float ox) {
+	// First convert to matrix coordinates
+	int x, z, checkx, checkz;
+	x = worldToMatrixCoordx(ox);
+	z = worldToMatrixCoordz(oz);
+	if (prex == -1 && prez == -1) {	// this is the first click for every set of clicks
+		prex = x;
+		prez = z;
+		clicks++;
+	}
+	else { // This is the second click for every set of clicks
+		checkx = abs(prex - x);
+		checkz = abs(prez - z);
+		if (checkz == 1 && checkx == 1) { // they are in the same diagonal, no switch
+			prex = -1;
+			prez = -1;
+			printf("Switch not allowed, please try a set of cubes that are in the same column or row");
+			return;
+		}
+		else if(checkz != 1 && checkx != 1){ // Not in the same row or column
+			prex = -1;
+			prez = -1;
+			printf("Switch not allowed, please try a set of cubes that are in the same column or row");
+			return;
+		}
+		else if (checkz == 1) { // They are in the same column, change rows
+			int temp = cubes[prez][prex].row;
+			cubes[prez][prex].row = cubes[z][x].row;
+			cubes[z][x].row = temp;
+		}
+		else if (checkx == 1) { // They are in the same row, change columns
+			int temp = cubes[prez][prex].column;
+			cubes[prez][prex].column = cubes[z][x].column;
+			cubes[z][x].column = temp;
+		}
+		// TODO ADD EXPLOSION CALL
+	}
+}
+// The function that computes the actual explosion
+void computeExplosion(int m1, int m2, int m3, int n, int rc) { // rc = row(0)->n or column(1)->n and m is the opposite of the n
+
+}
+// The function that checks for explosion
+void checkExplosion(int z, int x) {
+	int color = cubes[z][x].color;
+	if ((z + 2) < 15 && cubes[z + 1][x].color == color && cubes[z + 2][x].color == color) {
+		computeExplosion(z, z + 1, z + 2, x, 1); // x is a column 
+	}
+	if (z - 2 >= 0 && cubes[z - 1][x].color == color && cubes[z - 2][x].color == color) {
+		computeExplosion(z - 2, z - 1, z, x, 1); // x is a column
+	}
+	if ((x + 2) < 15 && cubes[z][x + 1].color == color && cubes[z][x + 2].color == color) {
+		computeExplosion(x, x + 1, x + 2, z, 0); // z is a row
+	}
+	if ((x - 2) >= 0 && cubes[z][x - 1].color == color && cubes[z][x - 2].color == color) {
+		computeExplosion(x, x - 1, x - 2, z, 0); // z is a row
+	}
+}
 /*
 
 void mouseMove(int x, int y) {
@@ -445,21 +549,14 @@ int main(int argc, char** argv) {
 	glutSpecialFunc(pressKey);
 	glutSpecialUpFunc(releaseKey);
 
-	// BONUS
-
-	// here are the two new functions
-	//glutMouseFunc(mouseButton); // BONUS
-	// glutMotionFunc(mouseMove); // Needed for mouseMove function BONUS		
-
-	// OpenGL init
-	//glEnable(GL_DEPTH_TEST);
-	//glEnable(GL_CULL_FACE);
 
 	// init Menus
 	createPopupMenus();
 
 	initGL();
 	
+	glutMouseFunc(Mouse);
+
 	// enter GLUT event processing cycle
 	glutMainLoop();
 
