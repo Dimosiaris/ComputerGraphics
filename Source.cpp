@@ -507,21 +507,15 @@ void checkClick(float ox, float oz) {
 			printf("Switch not allowed, please try a set of cubes that are in the same column or row");
 			return;
 		}
-		else if (checkX == 1) { // They are in the same column, change rows
+		else if (checkZ == 1 || checkX == 1) { // They are in the same column, change rows
 			printf("They are in the same column\n");
 			printf("cubes[%d][%d] = %ld", prevX, prevZ, cubes[prevX][prevZ]);
 			int temp = cubes[prevX][prevZ].color;
-			cubes[prevX][prevZ].color = cubes[x][z].color;
-			cubes[x][z].color = temp;
+			cubes[prevZ][prevX].color = cubes[z][x].color;
+			cubes[z][x].color = temp;
 
 		}
-		else if (checkZ == 1) { // They are in the same row, change columns
-			printf("They are in the same row\n");
-			printf("cubes[%d][%d] = %ld", prevX, prevZ, cubes[prevX][prevZ]);
-			int temp = cubes[prevX][prevZ].color;
-			cubes[prevX][prevZ].color = cubes[x][z].color;
-			cubes[x][z].color = temp;
-		}
+		
 		//checkExplosion(x, z);
 		//checkExplosion(prevX, prevZ);
 		prevX = -1;
