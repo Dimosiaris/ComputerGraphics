@@ -459,15 +459,16 @@ void Mouse(int button, int state, int x, int y) {
 		gluUnProject(wx, wy, wz, modelview, projection, viewport, &ox, &oy, &oz); // the final coordinates
 
 		//glutPostRedisplay();
+		printf("----------------------------------------------------------\n");
 		printf("(x, y, z) in world coordinates is:(%f, %f)\n", ox, oz);
-		checkClick(oz, ox);
+		checkClick(ox, oz);
 		return;
 	}
 
 
 }
 // Checks if the click was the first one, if the cubes selected are in the same column or row and if so calls the explosion function
-void checkClick(float oz, float ox) {
+void checkClick(float ox, float oz) {
 	// First convert to matrix coordinates
 	int x, z, checkX, checkZ;
 	x = worldToMatrixCoordx(ox);
@@ -475,7 +476,7 @@ void checkClick(float oz, float ox) {
 	printf("x: %d\n", x);
 	printf("z: %d\n", z);
 	if (!gameStarted) {
-		printf("Start the game first");
+		printf("Start the game first\n");
 		prevX = -1;
 		prevZ = -1;
 		return;
@@ -506,26 +507,27 @@ void checkClick(float oz, float ox) {
 			printf("Switch not allowed, please try a set of cubes that are in the same column or row");
 			return;
 		}
-		else if (checkZ == 1) { // They are in the same column, change rows
+		else if (checkX == 1) { // They are in the same column, change rows
 			printf("They are in the same column\n");
-			printf("cubes[%d][%d] = %ld", prevZ, prevX, cubes[prevZ][prevX]);
-			int temp = cubes[prevZ][prevX].color;
-			cubes[prevZ][prevX].color = cubes[z][x].color;
-			cubes[z][x].color = temp;
+			printf("cubes[%d][%d] = %ld", prevX, prevZ, cubes[prevX][prevZ]);
+			int temp = cubes[prevX][prevZ].color;
+			cubes[prevX][prevZ].color = cubes[x][z].color;
+			cubes[x][z].color = temp;
 
 		}
-		else if (checkX == 1) { // They are in the same row, change columns
+		else if (checkZ == 1) { // They are in the same row, change columns
 			printf("They are in the same row\n");
-			printf("cubes[%d][%d] = %ld", prevZ, prevX, cubes[prevZ][prevX]);
-			int temp1 = cubes[prevZ][prevX].color;
-			cubes[prevZ][prevX].color = cubes[z][x].color;
-			cubes[z][x].color = temp1;
+			printf("cubes[%d][%d] = %ld", prevX, prevZ, cubes[prevX][prevZ]);
+			int temp = cubes[prevX][prevZ].color;
+			cubes[prevX][prevZ].color = cubes[x][z].color;
+			cubes[x][z].color = temp;
 		}
+		//checkExplosion(x, z);
+		//checkExplosion(prevX, prevZ);
 		prevX = -1;
 		prevZ = -1;
-		checkExplosion(z, x);
-		checkExplosion(prevZ, prevX);
 		moves++;
+		return;
 	}
 }
 
