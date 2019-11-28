@@ -1,14 +1,3 @@
-#include <GL/glew.h>  // need to be included before gl too avoid errors
-#include <GL/glut.h>  // GLUT, include glu.h and gl.h
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <GL/freeglut.h>
-#include <time.h>
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-#include <iostream>
-
 //alec
 #ifdef LINUX
 #include <unistd.h>
@@ -16,6 +5,20 @@
 #ifdef WINDOWS
 #include <windows.h>
 #endif
+#include <GL/glew.h>  // need to be included before gl too avoid errors
+#include <GL/glut.h>  // GLUT, include glu.h and gl.h
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <GL/freeglut.h>
+#include <time.h>
+#include <iostream>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#include <windows.h>
+
+
+
 
 
 
@@ -24,22 +27,22 @@
 #define ROCK 2
 #define PAPER 3
 #define SCISSORS 4
-#define BOMB 5 //alec
+#define BOMB 5 
 #define BLACK 6
 #define EXPLOSION 7
-
 
 // Constant definitions for Menus
 
 #define STARTGAME 1
 #define EXIT 2
 
-//alec : made it 6
-GLuint textures[6]; //the array for our texture
 
+GLuint textures[8]; //the array for our texture
+GLdouble ox = 0.0, oy = 0.0, oz = 0.0; // coordinates
 
-// angle of rotation for the camera direction
-float angle = 1.0f;
+// The previous choice of the matrix
+int prevX = -1;
+int prevZ = -1;
 
 // actual vector representing the camera's direction
 float lx = 1.0f, lz = 1.0f;
@@ -49,13 +52,9 @@ float x = 9.5f, z = 10.5f;
 
 // the key states. These variables will be zero
 //when no key is being presses
-float deltaAngle = 0.0f;
 float deltaMoveX = 0;
 float deltaMoveZ = 0;
 int xOrigin = -1;
-
-
-
 
 // Pop up menu identifiers
 int mainMenu;
@@ -68,6 +67,9 @@ int gameStarted = 0;
 
 // textures initialized
 int gameInitialized = 0;
+
+// The counter of clicks
+int clicks = 0;
 
 // Moves of the player
 int moves = 0;
@@ -85,8 +87,60 @@ struct cube {
 	float z;
 }cubes[15][15];
 
+void computeExplosion(int m1, int m2, int m3, int n, int rc);
+void explosion(cube cube);	// TODO CREATE THE IMPLEMENTATION
+void checkExplosion(int z, int x);
+void checkClick(float oz, float ox);
 
 
+//alec
+
+
+void mySleep(int sleepMs)
+{
+#ifdef LINUX
+	sleep();
+#endif
+#ifdef WINDOWS
+	Sleep();
+#endif
+}
+
+//alec : 
+void explosion(int z, int x) {
+	printf("BOOOOOOM\n");
+	cubes[z][x].color = EXPLOSION;
+	Sleep(200);
+	cubes[z][x].color = BLACK;
+}
+
+//alec 5% chance for bomb
+int textureChooser() {
+	float a = rand() / float(RAND_MAX);
+	if (a < 0.19)
+		return 0;
+	else if (a < 0.38)
+		return 1;
+	else if (a < 0.57)
+		return 2;
+	else if (a < 0.76)
+		return 3;
+	else if (a < 0.95)
+		return 4;
+	return 5;
+}
+
+// The world coordinates that the mouse returns to us to matrix position for x
+int worldToMatrixCoordx(float x) {
+	//x -= 1;
+	int temp = (int)floor(x - ((floor(x / 1.5) / 2)));	// Copyrights Dimosiaris
+	return temp;
+}
+// The world coordinates that the mouse returns to us to matrix position for z
+int worldToMatrixCoordz(float z) {
+	z += 23;
+	return (int)floor(z - ((floor(z / 1.5) / 2))); // Copyrights Dimosiaris
+}
 
 void drawString(float x, float y, float z, char* string) {
 	glRasterPos3f(x, y, z);
@@ -130,46 +184,6 @@ void loadTextureFromFile(const char* filename, int i)
 	//stbi_image_free(data);
 }
 
-//alec
-
-void mySleep(int sleepMs)
-{
-#ifdef LINUX
-	sleep();   
-#endif
-#ifdef WINDOWS
-	Sleep();
-#endif
-}
-
-//alec : 
-void explosion(cube cube)  {
-	cube.color = EXPLOSION;
-	mySleep(2);
-	cube.color = BLACK;
-}
-
-//alec 5% chance for bomb
-int textureChooser() {
-	float a = rand() / float(RAND_MAX);
-	if (a < 0.19)
-		return 0;
-	else if (a < 0.38)
-		return 1;
-	else if (a < 0.57)
-		return 2;
-	else if (a < 0.76)
-		return 3;
-	else if (a < 0.95)
-		return 4;
-
-	return 5;
-
-
-
-
-
-}
 
 void initGL() {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Set background color to black and opaque
@@ -189,7 +203,7 @@ void initGL() {
 			}
 		}
 		//alec : changed the names of the files
-		
+
 		loadTextureFromFile("scissors.jpg", SCISSORS);
 		loadTextureFromFile("rock.jpg", ROCK);
 		loadTextureFromFile("paper.jpg", PAPER);
@@ -199,8 +213,6 @@ void initGL() {
 		loadTextureFromFile("bomb.jpg", BOMB); //alec :BONUS
 		loadTextureFromFile("explosion.jpg", EXPLOSION);
 		loadTextureFromFile("black.jpg", BLACK);
-		
-
 		gameInitialized = 1;
 	}
 }
@@ -236,10 +248,6 @@ void FreeTexture(GLuint texture)
 	glDeleteTextures(1, &texture);
 }
 
-
-
-
-
 void drawCube(int color) {
 	if (color == -1) {
 		glDisable(GL_TEXTURE_2D);
@@ -254,7 +262,7 @@ void drawCube(int color) {
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, textures[color]);
 		glBegin(GL_QUADS);				// start drawing the cube.
-		
+
 		//alec : kane ola ta 0.5 -> 0.9
 		 // Front Face
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.5f, -0.5f, 0.5f);	// Bottom Left Of The Texture and Quad
@@ -292,7 +300,7 @@ void drawCube(int color) {
 		glTexCoord2f(0.9f, 0.9f); glVertex3f(-0.5f, 0.5f, 0.5f);	// Top Right Of The Texture and Quad
 		glTexCoord2f(0.0f, 0.9f); glVertex3f(-0.5f, 0.5f, -0.5f);	// Top Left Of The Texture and Quad
 
-		
+
 		glEnd();
 
 		glFlush();
@@ -419,40 +427,286 @@ void releaseKey(int key, int x, int y) {
 //             MOUSE
 // -----------------------------------
 
-/*
+void Mouse(int button, int state, int x, int y) {
 
-void mouseMove(int x, int y) {
+	GLint viewport[4];
 
-	// this will only be true when the left button is down
-	if (xOrigin >= 0) {
+	GLdouble modelview[16], projection[16];
 
-		// update deltaAngle
-		deltaAngle = (x - xOrigin) * 0.001f;
+	GLfloat wx = x, wy, wz;
 
-		// update camera's direction
-		lx = sin(angle + deltaAngle);
-		lz = -cos(angle + deltaAngle);
+	if (state != GLUT_DOWN)
+
+		return;
+
+	if (button == GLUT_RIGHT_BUTTON)
+
+		exit(0);
+	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+		glGetIntegerv(GL_VIEWPORT, viewport); // returns x, y, height, width
+
+		y = viewport[3] - y;	// height - y
+
+		wy = y;
+
+		glGetDoublev(GL_MODELVIEW_MATRIX, modelview); // for the transformations
+
+		glGetDoublev(GL_PROJECTION_MATRIX, projection); // what we see
+
+		glReadPixels(x, y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &wz); // get the z
+
+
+		gluUnProject(wx, wy, wz, modelview, projection, viewport, &ox, &oy, &oz); // the final coordinates
+
+		//glutPostRedisplay();
+		printf("(x, y, z) in world coordinates is:(%f, %f)\n", ox, oz);
+		checkClick(oz, ox);
+		return;
+	}
+
+
+}
+// Checks if the click was the first one, if the cubes selected are in the same column or row and if so calls the explosion function
+void checkClick(float oz, float ox) {
+	// First convert to matrix coordinates
+	int x, z, checkX, checkZ;
+	x = worldToMatrixCoordx(ox);
+	z = worldToMatrixCoordz(oz);
+	printf("x: %d\n", x);
+	printf("z: %d\n", z);
+	if (!gameStarted) {
+		printf("Start the game first");
+		prevX = -1;
+		prevZ = -1;
+		return;
+	}
+	if (x < 0 || x > 14 || z < 0 || z > 14) {
+		printf("Out of bounds!\n");
+		prevX = -1;
+		prevZ = -1;
+		return;
+	}
+	if (prevX == -1 && prevZ == -1) {	// this is the first click for every set of clicks
+		prevX = x;
+		prevZ = z;
+		clicks++;
+	}
+	else { // This is the second click for every set of clicks
+		checkX = abs(prevX - x);
+		checkZ = abs(prevZ - z);
+		if (checkZ == 1 && checkX == 1) { // they are in the same diagonal, no switch
+			prevX = -1;
+			prevZ = -1;
+			printf("Switch not allowed, please try a set of cubes that are in the same column or row");
+			return;
+		}
+		else if (checkZ != 1 && checkX != 1) { // Not in the same row or column
+			prevX = -1;
+			prevZ = -1;
+			printf("Switch not allowed, please try a set of cubes that are in the same column or row");
+			return;
+		}
+		else if (checkZ == 1) { // They are in the same column, change rows
+			printf("They are in the same column\n");
+			printf("cubes[%d][%d] = %ld", prevZ, prevX, cubes[prevZ][prevX]);
+			int temp = cubes[prevZ][prevX].color;
+			cubes[prevZ][prevX].color = cubes[z][x].color;
+			cubes[z][x].color = temp;
+
+		}
+		else if (checkX == 1) { // They are in the same row, change columns
+			printf("They are in the same row\n");
+			printf("cubes[%d][%d] = %ld", prevZ, prevX, cubes[prevZ][prevX]);
+			int temp1 = cubes[prevZ][prevX].color;
+			cubes[prevZ][prevX].color = cubes[z][x].color;
+			cubes[z][x].color = temp1;
+		}
+		prevX = -1;
+		prevZ = -1;
+		checkExplosion(z, x);
+		checkExplosion(prevZ, prevX);
+		moves++;
 	}
 }
 
-
-void mouseButton(int button, int state, int x, int y) {
-
-	// only start motion if the left button is pressed
-	if (button == GLUT_LEFT_BUTTON) {
-
-		// when the button is released
-		if (state == GLUT_UP) {
-			angle += deltaAngle;
-			xOrigin = -1;
-		}
-		else {// state = GLUT_DOWN
-			xOrigin = x;
-		}
+// TODO CREATE THE IMPLEMENTATION
+// The function that checks for explosion
+void checkExplosion(int z, int x) {
+	int color = cubes[z][x].color;
+	if ((z + 2) < 15 && cubes[z + 1][x].color == color && cubes[z + 2][x].color == color) {
+		computeExplosion(z, z + 1, z + 2, x, 1); // x is a column 
+	}
+	if (z - 2 >= 0 && cubes[z - 1][x].color == color && cubes[z - 2][x].color == color) {
+		computeExplosion(z - 2, z - 1, z, x, 1); // x is a column
+	}
+	if ((x + 2) < 15 && cubes[z][x + 1].color == color && cubes[z][x + 2].color == color) {
+		computeExplosion(x, x + 1, x + 2, z, 0); // z is a row
+	}
+	if ((x - 2) >= 0 && cubes[z][x - 1].color == color && cubes[z][x - 2].color == color) {
+		computeExplosion(x, x - 1, x - 2, z, 0); // z is a row
 	}
 }
+// The function that computes the actual explosion
+void computeExplosion(int m1, int m2, int m3, int n, int rc) { // rc = row(0)->n or column(1)->n and m is the opposite of the n
+	if (rc == 0) {	// n is a row
+		int z = n;		// The z
+		int xl = m1;	// The left x in a set of three
+		int xm = m2;	// The middle x in a set of three
+		int xr = m3;	// The right x in a set of three
+		int color = cubes[xm][z].color;
+		int i, j;
+		for (i = z - 3; i <= z + 3; i++) {	// levels 2,3
+			for (j = xl - 3; j <= xr + 3; j++) {
+				if (i >= z - 1 && i <= z + 1) {} // do nothing
+				else if (j >= xl - 1 && j <= xr + 1) {} // do nothing
+				else if (i >= 0 && i < 15 && j >= 0 && j < 15) { // we are at level 2 and 3
+					switch (color) {
+					case(RED):
+						break;
+					case(BLUE):
+						break;
+					case(ROCK):
+						if (cubes[i][j].color == SCISSORS) {
+							explosion(i, j);
+						}
+						break;
+					case(PAPER):
+						if (cubes[i][j].color == ROCK) {
+							explosion(i, j);
+						}
+						break;
+					case(SCISSORS):
+						if (cubes[i][j].color == PAPER) {
+							explosion(i, j);
+						}
+						break;
+					}
+				}
+			}
+		}
+		for (i = z - 1; i <= z + 1; i++) {	// level 0, 1
+			for (j = xl - 1; j <= xr + 1; j++) {
+				if (i == z && j >= xl && j <= xr) { // level 0
+					explosion(i, j);
+				}
+				else {	// level 1
+					switch (color) {
+					case(RED):
+						break;
+					case(BLUE):
+						break;
+					case(ROCK):
+						if (cubes[i][j].color == PAPER) {
+							break;
+						}
+						else {
+							explosion(i, j);
+						}
+						break;
+					case(PAPER):
+						if (cubes[i][j].color == SCISSORS) {
+							break;
+						}
+						else {
+							explosion(i, j);
+						}
+						break;
+					case(SCISSORS):
+						if (cubes[i][j].color == ROCK) {
+							break;
+						}
+						else {
+							explosion(i, j);
+						}
+						break;
+					}
+				}
+			}
+		}
+	}
+	else if (rc == 1) {	// n is a column
+		int x = n;
+		int zu = m1;	// The up z in a set of three
+		int zm = m2;	// The middle z in a set of three
+		int zd = m3;	// The down z in a set of three
+		int color = cubes[zm][x].color;
+		int i, j;
 
-*/
+		
+		for (i = zd - 3; i <= zu + 3; i++) {	// levels 2,3
+			for (j = x - 3; j <= x + 3; j++) {
+				if (j >= x - 1 && j <= x + 1) {} // do nothing
+				else if (i >= zd - 1 && i <= zu + 1) {} // do nothing
+				else if (j >= 0 && j < 15 && i >= 0 && i < 15) { // we are at level 2 and 3
+					switch (color) {
+					case(RED):
+						break;
+					case(BLUE):
+						break;
+					case(ROCK):
+						if (cubes[i][j].color == SCISSORS) {
+							explosion(i, j);
+						}
+						break;
+					case(PAPER):
+						if (cubes[i][j].color == ROCK) {
+							explosion(i, j);
+						}
+						break;
+					case(SCISSORS):
+						if (cubes[i][j].color == PAPER) {
+							explosion(i, j);
+						}
+						break;
+					}
+				}
+			}
+		}
+
+		for (i = zd - 1; i <= zu + 1; i++) {	// level 0, 1
+			for (j = x - 1; j <= x + 1; j++) {
+				if (i == x && j >= zd && j <= zu) { // level 0
+					explosion(i, j);
+				}
+				else {	// level 1
+					switch (color) {
+					case(RED):
+						break;
+					case(BLUE):
+						break;
+					case(ROCK):
+						if (cubes[i][j].color == PAPER) {
+							break;
+						}
+						else {
+							explosion(i, j);
+						}
+						break;
+					case(PAPER):
+						if (cubes[i][j].color == SCISSORS) {
+							break;
+						}
+						else {
+							explosion(i, j);
+						}
+						break;
+					case(SCISSORS):
+						if (cubes[i][j].color == ROCK) {
+							break;
+						}
+						else {
+							explosion(i, j);
+						}
+						break;
+					}
+				}
+			}
+		}
+	}
+	return;
+}
+
+
 
 // -----------------------------------
 //             MENUS
@@ -514,20 +768,13 @@ int main(int argc, char** argv) {
 	glutSpecialFunc(pressKey);
 	glutSpecialUpFunc(releaseKey);
 
-	// BONUS
-
-	// here are the two new functions
-	//glutMouseFunc(mouseButton); // BONUS
-	// glutMotionFunc(mouseMove); // Needed for mouseMove function BONUS		
-
-	// OpenGL init
-	//glEnable(GL_DEPTH_TEST);
-	//glEnable(GL_CULL_FACE);
 
 	// init Menus
 	createPopupMenus();
 
 	initGL();
+
+	glutMouseFunc(Mouse);
 
 	// enter GLUT event processing cycle
 	glutMainLoop();
