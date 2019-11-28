@@ -1,3 +1,11 @@
+
+//alec
+#ifdef LINUX
+#include <unistd.h>
+#endif
+#ifdef WINDOWS
+#include <windows.h>
+#endif
 #include <GL/glew.h>  // need to be included before gl too avoid errors
 #include <GL/glut.h>  // GLUT, include glu.h and gl.h
 #include <math.h>
@@ -8,12 +16,21 @@
 #include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include <windows.h>
+
+
+
+
+
 
 #define RED 0
 #define BLUE 1
 #define ROCK 2
 #define PAPER 3
 #define SCISSORS 4
+#define BOMB 5 
+#define BLACK 6
+#define EXPLOSION 7
 
 // Constant definitions for Menus
 
@@ -21,7 +38,7 @@
 #define EXIT 2
 
 
-GLuint textures[5]; //the array for our texture
+GLuint textures[8]; //the array for our texture
 GLdouble ox = 0.0, oy = 0.0, oz = 0.0; // coordinates
 
 // The previous choice of the matrix
@@ -71,10 +88,54 @@ struct cube {
 	float z;
 }cubes[15][15];
 
+void computeExplosion(int m1, int m2, int m3, int n, int rc);
+void explosion(cube cube);	// TODO CREATE THE IMPLEMENTATION
+void checkExplosion(int z, int x);
+void checkClick(float oz, float ox);
+
+
+//alec
+
+
+void mySleep(int sleepMs)
+{
+#ifdef LINUX
+	sleep();
+#endif
+#ifdef WINDOWS
+	Sleep();
+#endif
+}
+
+//alec : 
+void explosion(int z, int x) {
+	printf("BOOOOOOM\n");
+	cubes[z][x].color = EXPLOSION;
+	Sleep(200);
+	cubes[z][x].color = BLACK;
+}
+
+//alec 5% chance for bomb
+int textureChooser() {
+	float a = rand() / float(RAND_MAX);
+	if (a < 0.19)
+		return 0;
+	else if (a < 0.38)
+		return 1;
+	else if (a < 0.57)
+		return 2;
+	else if (a < 0.76)
+		return 3;
+	else if (a < 0.95)
+		return 4;
+	return 5;
+}
+
 // The world coordinates that the mouse returns to us to matrix position for x
 int worldToMatrixCoordx(float x) {
-	x -= 1;
-	return (int)floor(x - ((floor(x / 1.5) / 2)));	// Copyrights Dimosiaris
+	//x -= 1;
+	int temp = (int)floor(x - ((floor(x / 1.5) / 2)));	// Copyrights Dimosiaris
+	return temp;
 }
 // The world coordinates that the mouse returns to us to matrix position for z
 int worldToMatrixCoordz(float z) {
@@ -136,17 +197,23 @@ void initGL() {
 	if (gameInitialized == 0) {
 		for (int i = 0; i < 15; i++) {
 			for (int j = 0; j < 15; j++) {
-				randomint = (rand() % 5);
+				randomint = textureChooser(); //alec for sure
 				cubes[i][j].color = randomint;
 				cubes[i][j].row = i;
 				cubes[i][j].column = j; 
 			}
 		}
-		loadTextureFromFile("scissors.bmp",SCISSORS);
-		loadTextureFromFile("rock.bmp", ROCK);
-		loadTextureFromFile("paper.bmp", PAPER);
+		//alec : changed the names of the files
+
+		loadTextureFromFile("scissors.jpg", SCISSORS);
+		loadTextureFromFile("rock.jpg", ROCK);
+		loadTextureFromFile("paper.jpg", PAPER);
 		loadTextureFromFile("red.bmp", RED);
 		loadTextureFromFile("blue.bmp", BLUE);
+
+		loadTextureFromFile("bomb.jpg", BOMB); //alec :BONUS
+		loadTextureFromFile("explosion.jpg", EXPLOSION);
+		loadTextureFromFile("black.jpg", BLACK);
 		gameInitialized = 1;
 	}
 }
@@ -184,7 +251,7 @@ void FreeTexture(GLuint texture)
 }
 
 void drawCube(int color) {
-	if (color == 5) {
+	if (color == -1) {
 		glDisable(GL_TEXTURE_2D);
 		glScalef(scale, scale, scale);
 		glColor3f(0.82f, 0.71f, 0.55f);
@@ -197,42 +264,42 @@ void drawCube(int color) {
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, textures[color]);
 		glBegin(GL_QUADS);				// start drawing the cube.
+		//alec : kane ola ta 0.5 -> 0.9
 		 // Front Face
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.5f, -0.5f, 0.5f);	// Bottom Left Of The Texture and Quad
-		glTexCoord2f(0.5f, 0.0f); glVertex3f(0.5f, -0.5f, 0.5f);	// Bottom Right Of The Texture and Quad
-		glTexCoord2f(0.5f, 0.5f); glVertex3f(0.5f, 0.5f, 0.5f);	// Top Right Of The Texture and Quad
-		glTexCoord2f(0.0f, 0.5f); glVertex3f(-0.5f, 0.5f, 0.5f);	// Top Left Of The Texture and Quad
+		glTexCoord2f(0.9f, 0.0f); glVertex3f(0.5f, -0.5f, 0.5f);	// Bottom Right Of The Texture and Quad
+		glTexCoord2f(0.9f, 0.9f); glVertex3f(0.5f, 0.5f, 0.5f);	// Top Right Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.9f); glVertex3f(-0.5f, 0.5f, 0.5f);	// Top Left Of The Texture and Quad
 
 		// Back Face
-		glTexCoord2f(0.5f, 0.0f); glVertex3f(-0.5f, -0.5f, -0.5f);	// Bottom Right Of The Texture and Quad
-		glTexCoord2f(0.5f, 0.5f); glVertex3f(-0.5f, 0.5f, -0.5f);	// Top Right Of The Texture and Quad
-		glTexCoord2f(0.0f, 0.5f); glVertex3f(0.5f, 0.5f, -0.5f);	// Top Left Of The Texture and Quad
+		glTexCoord2f(0.9f, 0.0f); glVertex3f(-0.5f, -0.5f, -0.5f);	// Bottom Right Of The Texture and Quad
+		glTexCoord2f(0.9f, 0.9f); glVertex3f(-0.5f, 0.5f, -0.5f);	// Top Right Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.9f); glVertex3f(0.5f, 0.5f, -0.5f);	// Top Left Of The Texture and Quad
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(0.5f, -0.5f, -0.5f);	// Bottom Left Of The Texture and Quad
 
 		// Top Face
-		glTexCoord2f(0.0f, 0.5f); glVertex3f(-0.5f, 0.5f, -0.5f);	// Top Left Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.9f); glVertex3f(-0.5f, 0.5f, -0.5f);	// Top Left Of The Texture and Quad
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.5f, 0.5f, 0.5f);	// Bottom Left Of The Texture and Quad
-		glTexCoord2f(0.5f, 0.0f); glVertex3f(0.5f, 0.5f, 0.5f);	// Bottom Right Of The Texture and Quad
-		glTexCoord2f(0.5f, 0.5f); glVertex3f(0.5f, 0.5f, -0.5f);	// Top Right Of The Texture and Quad
+		glTexCoord2f(0.9f, 0.0f); glVertex3f(0.5f, 0.5f, 0.5f);	// Bottom Right Of The Texture and Quad
+		glTexCoord2f(0.9f, 0.9f); glVertex3f(0.5f, 0.5f, -0.5f);	// Top Right Of The Texture and Quad
 
 		// Bottom Face
-		glTexCoord2f(0.5f, 0.5f); glVertex3f(-0.5f, -0.5f, -0.5f);	// Top Right Of The Texture and Quad
-		glTexCoord2f(0.0f, 0.5f); glVertex3f(0.5f, -0.5f, -0.5f);	// Top Left Of The Texture and Quad
+		glTexCoord2f(0.9f, 0.9f); glVertex3f(-0.5f, -0.5f, -0.5f);	// Top Right Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.9f); glVertex3f(0.5f, -0.5f, -0.5f);	// Top Left Of The Texture and Quad
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(0.5f, -0.5f, 0.5f);	// Bottom Left Of The Texture and Quad
-		glTexCoord2f(0.5f, 0.0f); glVertex3f(-0.5f, -0.5f, 0.5f);	// Bottom Right Of The Texture and Quad
+		glTexCoord2f(0.9f, 0.0f); glVertex3f(-0.5f, -0.5f, 0.5f);	// Bottom Right Of The Texture and Quad
 
 		// Right face
-		glTexCoord2f(0.5f, 0.0f); glVertex3f(0.5f, -0.5f, -0.5f);	// Bottom Right Of The Texture and Quad
-		glTexCoord2f(0.5f, 0.5f); glVertex3f(0.5f, 0.5f, -0.5f);	// Top Right Of The Texture and Quad
-		glTexCoord2f(0.0f, 0.5f); glVertex3f(0.5f, 0.5f, 0.5f);	// Top Left Of The Texture and Quad
+		glTexCoord2f(0.9f, 0.0f); glVertex3f(0.5f, -0.5f, -0.5f);	// Bottom Right Of The Texture and Quad
+		glTexCoord2f(0.9f, 0.9f); glVertex3f(0.5f, 0.5f, -0.5f);	// Top Right Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.9f); glVertex3f(0.5f, 0.5f, 0.5f);	// Top Left Of The Texture and Quad
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(0.5f, -0.5f, 0.5f);	// Bottom Left Of The Texture and Quad
 
 		// Left Face
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.5f, -0.5f, -0.5f);	// Bottom Left Of The Texture and Quad
-		glTexCoord2f(0.5f, 0.0f); glVertex3f(-0.5f, -0.5f, 0.5f);	// Bottom Right Of The Texture and Quad
-		glTexCoord2f(0.5f, 0.5f); glVertex3f(-0.5f, 0.5f, 0.5f);	// Top Right Of The Texture and Quad
-		glTexCoord2f(0.0f, 0.5f); glVertex3f(-0.5f, 0.5f, -0.5f);	// Top Left Of The Texture and Quad
-
+		glTexCoord2f(0.9f, 0.0f); glVertex3f(-0.5f, -0.5f, 0.5f);	// Bottom Right Of The Texture and Quad
+		glTexCoord2f(0.9f, 0.9f); glVertex3f(-0.5f, 0.5f, 0.5f);	// Top Right Of The Texture and Quad
+		glTexCoord2f(0.0f, 0.9f); glVertex3f(-0.5f, 0.5f, -0.5f);	// Top Left Of The Texture and Quad
 		glEnd();
 
 		glFlush();
@@ -272,10 +339,10 @@ void renderScene(void) {
 		0.0f, 1.0f, 0.0f);
 
 
-	char textMoves[20];
-	sprintf_s(textMoves, "Moves: %d", moves);
+	char textScore[20];
+	sprintf_s(textScore, "Score: %d", score);
 	glColor3f(1.0f, 0.30f, 1.0f);
-	drawString(24.0, 0.0, 20.0, textMoves);
+	drawString(24.0, 0.0, 20.0, textScore);
 	glColor3f(1.0f, 1.0f, 1.0f);
 	
 
@@ -287,7 +354,7 @@ void renderScene(void) {
 			for (int j = 0; j < 15; j++) {
 				glPushMatrix();
 				glTranslatef(j * 1.5f, 0.0f, 0.0f);
-				drawCube(5);
+				drawCube(-1);
 				glPopMatrix();
 			}
 			glTranslatef(0.0f, 0.0f, 1.5f);
@@ -389,8 +456,8 @@ void Mouse(int button, int state, int x, int y) {
 
 		//glutPostRedisplay();
 		printf("(x, y, z) in world coordinates is:(%f, %f)\n", ox, oz);
-		
-		
+		checkClick(oz, ox);
+		return;
 	}
 	
 
@@ -399,8 +466,11 @@ void Mouse(int button, int state, int x, int y) {
 void checkClick(float oz, float ox) {
 	// First convert to matrix coordinates
 	int x, z, checkx, checkz;
+	printf("TEST@");
 	x = worldToMatrixCoordx(ox);
 	z = worldToMatrixCoordz(oz);
+	printf("x: + %d\n", x);
+	printf("z: + %d\n", z);
 	if (prex == -1 && prez == -1) {	// this is the first click for every set of clicks
 		prex = x;
 		prez = z;
@@ -422,72 +492,212 @@ void checkClick(float oz, float ox) {
 			return;
 		}
 		else if (checkz == 1) { // They are in the same column, change rows
-			int temp = cubes[prez][prex].row;
-			cubes[prez][prex].row = cubes[z][x].row;
-			cubes[z][x].row = temp;
+			printf("cubes[%d][%d] = %ld", prez, prex, cubes[prez][prex]);
+			printf("CHECK!");		
+			int temp = cubes[prez][prex].color;
+			cubes[prez][prex].color = cubes[z][x].color;
+			cubes[z][x].color = temp;
+			
 		}
 		else if (checkx == 1) { // They are in the same row, change columns
-			int temp = cubes[prez][prex].column;
-			cubes[prez][prex].column = cubes[z][x].column;
-			cubes[z][x].column = temp;
+			printf("CHECK!2");
+			printf("pre x :%d, z: %d", prex, prez);
+			int temp1 = cubes[prez][prex].color;
+			cubes[prez][prex].color = cubes[z][x].color;
+			cubes[z][x].color = temp1;
 		}
-		// TODO ADD EXPLOSION CALL
+		prex = -1;
+		prez = -1;
+		checkExplosion(z, x);
+		checkExplosion(prez, prex);
+		moves++;
+	}
+}
+
+// TODO CREATE THE IMPLEMENTATION
+// The function that checks for explosion
+void checkExplosion(int z, int x) {
+	int color = cubes[z][x].color;
+	printf("COLORADO: %d\n", cubes[z][x].color);
+	if ((z + 2) < 15 && cubes[z + 1][x].color == color && cubes[z + 2][x].color == color) {
+		printf("BOOM?\n");
+		computeExplosion(z, z + 1, z + 2, x, 1); // x is a column 
+	}
+	if (z - 2 >= 0 && cubes[z - 1][x].color == color && cubes[z - 2][x].color == color) {
+		printf("BOOM?\n");
+		computeExplosion(z - 2, z - 1, z, x, 1); // x is a column
+	}
+	if ((x + 2) < 15 && cubes[z][x + 1].color == color && cubes[z][x + 2].color == color) {
+		printf("BOOM?\n");
+		computeExplosion(x, x + 1, x + 2, z, 0); // z is a row
+	}
+	if ((x - 2) >= 0 && cubes[z][x - 1].color == color && cubes[z][x - 2].color == color) {
+		printf("BOOM?\n");
+		computeExplosion(x, x - 1, x - 2, z, 0); // z is a row
 	}
 }
 // The function that computes the actual explosion
 void computeExplosion(int m1, int m2, int m3, int n, int rc) { // rc = row(0)->n or column(1)->n and m is the opposite of the n
-
-}
-// The function that checks for explosion
-void checkExplosion(int z, int x) {
-	int color = cubes[z][x].color;
-	if ((z + 2) < 15 && cubes[z + 1][x].color == color && cubes[z + 2][x].color == color) {
-		computeExplosion(z, z + 1, z + 2, x, 1); // x is a column 
-	}
-	if (z - 2 >= 0 && cubes[z - 1][x].color == color && cubes[z - 2][x].color == color) {
-		computeExplosion(z - 2, z - 1, z, x, 1); // x is a column
-	}
-	if ((x + 2) < 15 && cubes[z][x + 1].color == color && cubes[z][x + 2].color == color) {
-		computeExplosion(x, x + 1, x + 2, z, 0); // z is a row
-	}
-	if ((x - 2) >= 0 && cubes[z][x - 1].color == color && cubes[z][x - 2].color == color) {
-		computeExplosion(x, x - 1, x - 2, z, 0); // z is a row
-	}
-}
-/*
-
-void mouseMove(int x, int y) {
-
-	// this will only be true when the left button is down
-	if (xOrigin >= 0) {
-
-		// update deltaAngle
-		deltaAngle = (x - xOrigin) * 0.001f;
-
-		// update camera's direction
-		lx = sin(angle + deltaAngle);
-		lz = -cos(angle + deltaAngle);
-	}
-}
-
-
-void mouseButton(int button, int state, int x, int y) {
-
-	// only start motion if the left button is pressed
-	if (button == GLUT_LEFT_BUTTON) {
-
-		// when the button is released
-		if (state == GLUT_UP) {
-			angle += deltaAngle;
-			xOrigin = -1;
+	if (rc == 0) {	// n is a row
+		int z = n;		// The z
+		int xl = m1;	// The left x in a set of three
+		int xm = m2;	// The middle x in a set of three
+		int xr = m3;	// The right x in a set of three
+		int color = cubes[xm][z].color;
+		printf("YO: %d", color);
+		int i, j;
+		printf("COLOR: %d\n", color);
+		for (i = z - 3; i <= z + 3; i++) {	// levels 2,3
+			for (j = xl - 3; j <= xr + 3; j++) {
+				if (i >= z - 1 && i <= z + 1) {} // do nothing
+				else if (j >= xl - 1 && j <= xr + 1) {} // do nothing
+				else if (i >= 0 && i < 15 && j >= 0 && j < 15) { // we are at level 2 and 3
+					switch (color) {
+					case(RED):
+						break;
+					case(BLUE):
+						break;
+					case(ROCK):
+						if (cubes[i][j].color == SCISSORS) {
+							explosion(i,j);
+						}
+						break;
+					case(PAPER):
+						if (cubes[i][j].color == ROCK) {
+							explosion(i, j);
+						}
+						break;
+					case(SCISSORS):
+						if (cubes[i][j].color == PAPER) {
+							explosion(i, j);
+						}
+						break;
+					}
+				}
+			}
 		}
-		else {// state = GLUT_DOWN
-			xOrigin = x;
+		for (i = z - 1; i <= z + 1; i++) {	// level 0, 1
+			for (j = xl - 1; j <= xr + 1; j++) {
+				if (i == z && j >= xl && j <= xr) { // level 0
+					printf("DID IT\n");
+					explosion(i, j);
+				}
+				else {	// level 1
+					switch (color) {
+					case(RED):
+						break;
+					case(BLUE):
+						break;
+					case(ROCK):
+						if (cubes[i][j].color == PAPER) {
+							break;
+						}
+						else {
+							explosion(i, j);
+						}
+						break;
+					case(PAPER):
+						if (cubes[i][j].color == SCISSORS) {
+							break;
+						}
+						else {
+							explosion(i, j);
+						}
+						break;
+					case(SCISSORS):
+						if (cubes[i][j].color == ROCK) {
+							break;
+						}else{
+							explosion(i, j);
+						}
+						break;
+					}
+				}
+			}
 		}
 	}
+	else if (rc == 1) {	// n is a column
+		int x = n;
+		int zu = m1;	// The up z in a set of three
+		int zm = m2;	// The middle z in a set of three
+		int zd = m3;	// The down z in a set of three
+		int color = cubes[zm][x].color;
+		int i, j;
+
+		for (i = zd - 3; i <= zu + 3; i++) {	// levels 2,3
+			for (j = x - 3; j <= x + 3; j++) {
+				if (j >= x - 1 && j <= x + 1) {} // do nothing
+				else if (i >= zd - 1 && i <= zu + 1) {} // do nothing
+				else if (j >= 0 && j < 15 && i >= 0 && i < 15) { // we are at level 2 and 3
+					switch (color) {
+					case(RED):
+						break;
+					case(BLUE):
+						break;
+					case(ROCK):
+						if (cubes[i][j].color == SCISSORS) {
+							explosion(i, j);
+						}
+						break;
+					case(PAPER):
+						if (cubes[i][j].color == ROCK) {
+							explosion(i, j);
+						}
+						break;
+					case(SCISSORS):
+						if (cubes[i][j].color == PAPER) {
+							explosion(i, j);
+						}
+						break;
+					}
+				}
+			}
+		}
+		for (i = zd - 1; i <= zu + 1; i++) {	// level 0, 1
+			for (j = x - 1; j <= x + 1; j++) {
+				if (i == x && j >= zd && j <= zu) { // level 0
+					printf("BOOM\n");
+					explosion(i, j);
+				}
+				else {	// level 1
+					switch (color) {
+					case(RED):
+						break;
+					case(BLUE):
+						break;
+					case(ROCK):
+						if (cubes[i][j].color == PAPER) {
+							break;
+						}
+						else {
+							explosion(i, j);
+						}
+						break;
+					case(PAPER):
+						if (cubes[i][j].color == SCISSORS) {
+							break;
+						}
+						else {
+							explosion(i, j);
+						}
+						break;
+					case(SCISSORS):
+						if (cubes[i][j].color == ROCK) {
+							break;
+						}
+						else {
+							explosion(i, j);
+						}
+						break;
+					}
+				}
+			}
+		}
+	}
+	return;
 }
 
-*/
+
 
 // -----------------------------------
 //             MENUS
