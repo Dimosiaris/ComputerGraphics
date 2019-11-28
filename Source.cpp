@@ -87,8 +87,8 @@ struct cube {
 	float z;
 }cubes[15][15];
 
-void computeExplosion(int m1, int m2, int m3, int n, int rc);
-void explosion(cube cube);	// TODO CREATE THE IMPLEMENTATION
+void computeExplosion(int x , int z , int  color , int axis);
+void explosion(int x , int z);	
 void checkExplosion(int z, int x);
 void checkClick(float oz, float ox);
 
@@ -107,25 +107,24 @@ void mySleep(int sleepMs)
 }
 
 //alec : 
-void explosion(int z, int x) {
-	printf("BOOOOOOM\n");
-	cubes[z][x].color = EXPLOSION;
-	Sleep(200);
-	cubes[z][x].color = BLACK;
+void explosion(int x, int z) {
+	//cubes[z][x].color = EXPLOSION;
+	//mySleep(2);
+	cubes[x][z].color = BLACK;
 }
 
 //alec 5% chance for bomb
 int textureChooser() {
 	float a = rand() / float(RAND_MAX);
-	if (a < 0.19)
+	if (a < 0.198)
 		return 0;
-	else if (a < 0.38)
+	else if (a < 0.396)
 		return 1;
-	else if (a < 0.57)
+	else if (a < 0.594)
 		return 2;
-	else if (a < 0.76)
+	else if (a < 0.792)
 		return 3;
-	else if (a < 0.95)
+	else if (a < 0.99)
 		return 4;
 	return 5;
 }
@@ -455,7 +454,6 @@ void Mouse(int button, int state, int x, int y) {
 
 		glReadPixels(x, y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &wz); // get the z
 
-
 		gluUnProject(wx, wy, wz, modelview, projection, viewport, &ox, &oy, &oz); // the final coordinates
 
 		//glutPostRedisplay();
@@ -475,6 +473,7 @@ void checkClick(float ox, float oz) {
 	z = worldToMatrixCoordz(oz);
 	printf("x: %d\n", x);
 	printf("z: %d\n", z);
+	printf("color: %d\n", cubes[x][z].color);
 	if (!gameStarted) {
 		printf("Start the game first\n");
 		prevX = -1;
@@ -507,17 +506,14 @@ void checkClick(float ox, float oz) {
 			printf("Switch not allowed, please try a set of cubes that are in the same column or row");
 			return;
 		}
-		else if (checkZ == 1 || checkX == 1) { // They are in the same column, change rows
-			printf("They are in the same column\n");
-			printf("cubes[%d][%d] = %ld", prevX, prevZ, cubes[prevX][prevZ]);
-			int temp = cubes[prevX][prevZ].color;
+		else if (checkZ == 1 || checkX == 1) { // They are in the same column, change rows		
+			int temp = cubes[prevZ][prevX].color;
 			cubes[prevZ][prevX].color = cubes[z][x].color;
 			cubes[z][x].color = temp;
-
 		}
 		
-		//checkExplosion(x, z);
-		//checkExplosion(prevX, prevZ);
+		checkExplosion(z, x);
+		checkExplosion(prevZ, prevX);
 		prevX = -1;
 		prevZ = -1;
 		moves++;
@@ -527,178 +523,131 @@ void checkClick(float ox, float oz) {
 
 // TODO CREATE THE IMPLEMENTATION
 // The function that checks for explosion
-void checkExplosion(int z, int x) {
-	int color = cubes[z][x].color;
-	if ((z + 2) < 15 && cubes[z + 1][x].color == color && cubes[z + 2][x].color == color) {
-		computeExplosion(z, z + 1, z + 2, x, 1); // x is a column 
+void checkExplosion(int x, int z) {
+	int *color;
+	color = &cubes[x][z].color;
+	printf("_______________________________________________________________\n");
+	printf("Does it explode for cube[%d][%d] with color: %d\n", x, z, *color);
+
+	if ((x + 1) < 15  && cubes[x + 1][z].color == *color &&  (x - 1) >=0 && cubes[x - 1][z].color == *color) { //Checking 1 on the right and 1 n the left
+		printf("1) Yes  cube[%d][%d] with color: %d exploded with 1 on the right and 1 on the left\n", x, z, *color);
+		computeExplosion(x, z, *color, 0);
+		
 	}
-	if (z - 2 >= 0 && cubes[z - 1][x].color == color && cubes[z - 2][x].color == color) {
-		computeExplosion(z - 2, z - 1, z, x, 1); // x is a column
+	if ((z + 1) < 15 && cubes[x][z + 1].color == *color && (z - 1) >= 0 && cubes[x][z - 1].color == *color) { //Checking 1 up and 1 down
+		printf("2) Yes  cube[%d][%d] with color: %d exploded with 1 up and 1 down\n", x, z, *color);
+		computeExplosion(x, z, *color, 1);
+		
 	}
-	if ((x + 2) < 15 && cubes[z][x + 1].color == color && cubes[z][x + 2].color == color) {
-		computeExplosion(x, x + 1, x + 2, z, 0); // z is a row
+	if ((x + 2) < 15 && cubes[x + 1][z].color == *color && cubes[x + 2][z].color == *color) { //Checking 2 right
+		printf("3) Yes  cube[%d][%d] with color: %d exploded with 2 on the right\n", x, z, *color);
+		computeExplosion(x + 1, z, *color, 0);
+		
 	}
-	if ((x - 2) >= 0 && cubes[z][x - 1].color == color && cubes[z][x - 2].color == color) {
-		computeExplosion(x, x - 1, x - 2, z, 0); // z is a row
+	if (x - 2 >= 0 && cubes[x - 1][z].color == *color && cubes[x - 2][z].color == *color) { //Checking 2 left
+		printf("4) Yes  cube[%d][%d] with color: %d exploded with 2 on the left\n", x, z, *color);
+		computeExplosion(x - 1, z, *color, 0);
+		
+	}
+	if ((z + 2) < 15 && cubes[x][z + 1].color == *color && cubes[x][z + 2].color == *color) { //Checking 2 up
+		printf("5) Yes  cube[%d][%d] with color: %d exploded with 2 up\n", x, z, *color);
+		computeExplosion(x, z + 1, *color, 1);
+		
+	}
+	if ((z - 2) >= 0 && cubes[x][z - 1].color == *color && cubes[x][z - 2].color == *color) { //Checking 2 down
+		printf("6) Yes  cube[%d][%d] with color: %d exploded with 2 down\n", x, z, *color);
+		computeExplosion(x, z - 1, *color, 1);
+		
 	}
 }
 // The function that computes the actual explosion
-void computeExplosion(int m1, int m2, int m3, int n, int rc) { // rc = row(0)->n or column(1)->n and m is the opposite of the n
-	if (rc == 0) {	// n is a row
-		int z = n;		// The z
-		int xl = m1;	// The left x in a set of three
-		int xm = m2;	// The middle x in a set of three
-		int xr = m3;	// The right x in a set of three
-		int color = cubes[xm][z].color;
-		int i, j;
-		for (i = z - 3; i <= z + 3; i++) {	// levels 2,3
-			for (j = xl - 3; j <= xr + 3; j++) {
-				if (i >= z - 1 && i <= z + 1) {} // do nothing
-				else if (j >= xl - 1 && j <= xr + 1) {} // do nothing
-				else if (i >= 0 && i < 15 && j >= 0 && j < 15) { // we are at level 2 and 3
-					switch (color) {
-					case(RED):
-						break;
-					case(BLUE):
-						break;
-					case(ROCK):
-						if (cubes[i][j].color == SCISSORS) {
-							explosion(i, j);
-						}
-						break;
-					case(PAPER):
-						if (cubes[i][j].color == ROCK) {
-							explosion(i, j);
-						}
-						break;
-					case(SCISSORS):
-						if (cubes[i][j].color == PAPER) {
-							explosion(i, j);
-						}
-						break;
-					}
-				}
-			}
-		}
-		for (i = z - 1; i <= z + 1; i++) {	// level 0, 1
-			for (j = xl - 1; j <= xr + 1; j++) {
-				if (i == z && j >= xl && j <= xr) { // level 0
-					explosion(i, j);
-				}
-				else {	// level 1
-					switch (color) {
-					case(RED):
-						break;
-					case(BLUE):
-						break;
-					case(ROCK):
-						if (cubes[i][j].color == PAPER) {
-							break;
-						}
-						else {
-							explosion(i, j);
-						}
-						break;
-					case(PAPER):
-						if (cubes[i][j].color == SCISSORS) {
-							break;
-						}
-						else {
-							explosion(i, j);
-						}
-						break;
-					case(SCISSORS):
-						if (cubes[i][j].color == ROCK) {
-							break;
-						}
-						else {
-							explosion(i, j);
-						}
-						break;
-					}
-				}
-			}
-		}
-	}
-	else if (rc == 1) {	// n is a column
-		int x = n;
-		int zu = m1;	// The up z in a set of three
-		int zm = m2;	// The middle z in a set of three
-		int zd = m3;	// The down z in a set of three
-		int color = cubes[zm][x].color;
-		int i, j;
+void computeExplosion(int x, int z, int color , int axis) { //axis is 0 horizontal trio  and 1 for vertical trio
+	int i, j;
 
+	//LEVEL 0
+	if (axis = 0) { 
+		printf("LEVEL 0: horizontal");
+		explosion(x, z);
+		explosion(x + 1, z);
+		explosion(x - 1, z);
+	}
+	else if (axis = 1) { 
+		printf("LEVEL 0: vertical");
+		explosion(x , z);
+		explosion(x , z + 1);
+		explosion(x , z - 1);
+	}
 		
-		for (i = zd - 3; i <= zu + 3; i++) {	// levels 2,3
-			for (j = x - 3; j <= x + 3; j++) {
-				if (j >= x - 1 && j <= x + 1) {} // do nothing
-				else if (i >= zd - 1 && i <= zu + 1) {} // do nothing
-				else if (j >= 0 && j < 15 && i >= 0 && i < 15) { // we are at level 2 and 3
-					switch (color) {
-					case(RED):
-						break;
-					case(BLUE):
-						break;
-					case(ROCK):
-						if (cubes[i][j].color == SCISSORS) {
-							explosion(i, j);
-						}
-						break;
-					case(PAPER):
-						if (cubes[i][j].color == ROCK) {
-							explosion(i, j);
-						}
-						break;
-					case(SCISSORS):
-						if (cubes[i][j].color == PAPER) {
-							explosion(i, j);
-						}
+	/*
+	if (axis == 0) {
+		printf("########HORIZONTAL##########\n");
+		for (i = x - 2; i <= x + 2; i++) {
+			for (j = z - 1; j <= z + 1; j++) {
+				switch (*color)
+				{
+				case RED:
+					break;
+				case BLUE:
+					break;
+				case ROCK:
+					if (cubes[i][j].color == PAPER) {
 						break;
 					}
-				}
-			}
-		}
-
-		for (i = zd - 1; i <= zu + 1; i++) {	// level 0, 1
-			for (j = x - 1; j <= x + 1; j++) {
-				if (i == x && j >= zd && j <= zu) { // level 0
 					explosion(i, j);
-				}
-				else {	// level 1
-					switch (color) {
-					case(RED):
-						break;
-					case(BLUE):
-						break;
-					case(ROCK):
-						if (cubes[i][j].color == PAPER) {
-							break;
-						}
-						else {
-							explosion(i, j);
-						}
-						break;
-					case(PAPER):
-						if (cubes[i][j].color == SCISSORS) {
-							break;
-						}
-						else {
-							explosion(i, j);
-						}
-						break;
-					case(SCISSORS):
-						if (cubes[i][j].color == ROCK) {
-							break;
-						}
-						else {
-							explosion(i, j);
-						}
+					break;
+				case PAPER:
+					if (cubes[i][j].color == SCISSORS) {
 						break;
 					}
+					explosion(i, j);
+					break;
+				case SCISSORS:
+					if (cubes[i][j].color == PAPER) {
+						break;
+					}
+					explosion(i, j);
+					break;
+				default:
+					break;
 				}
 			}
 		}
 	}
+	if (axis == 1) {
+		printf("@@@@@@@VERTICAL@@@@@@@@@@\n");
+		for (i = z - 2; i <= z + 2; i++) {
+			for (j = x - 1; j <= x + 1; j++) {
+				switch (*color)
+				{
+				case RED:
+					break;
+				case BLUE:
+					break;
+				case ROCK:
+					if (cubes[i][j].color == PAPER) {
+						break;
+					}
+					explosion(i, j);
+					break;
+				case PAPER:
+					if (cubes[i][j].color == SCISSORS) {
+						break;
+					}
+					explosion(i, j);
+					break;
+				case SCISSORS:
+					if (cubes[i][j].color == PAPER) {
+						break;
+					}
+					explosion(i, j);
+					break;
+				default:
+					break;
+				}
+			}
+		}
+	}
+	*/
 	return;
 }
 
