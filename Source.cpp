@@ -87,7 +87,7 @@ struct cube {
 	float z;
 }cubes[15][15];
 
-void computeExplosion(int x , int z , int  color , int axis);
+void computeExplosion(int x , int z , int  *color , int axis);
 void explosion(int x , int z);	
 void checkExplosion(int z, int x);
 void checkClick(float oz, float ox);
@@ -473,7 +473,7 @@ void checkClick(float ox, float oz) {
 	z = worldToMatrixCoordz(oz);
 	printf("x: %d\n", x);
 	printf("z: %d\n", z);
-	printf("color: %d\n", cubes[x][z].color);
+	printf("color: %d\n", cubes[z][x].color);
 	if (!gameStarted) {
 		printf("Start the game first\n");
 		prevX = -1;
@@ -511,9 +511,18 @@ void checkClick(float ox, float oz) {
 			cubes[prevZ][prevX].color = cubes[z][x].color;
 			cubes[z][x].color = temp;
 		}
-		
-		checkExplosion(z, x);
-		checkExplosion(prevZ, prevX);
+		if (cubes[z][x].color == BLACK && cubes[prevZ][prevX].color == BLACK) {
+			prevX = -1;
+			prevZ = -1;
+			return;
+		}
+
+		if (cubes[z][x].color != BLACK) {
+			checkExplosion(z, x);
+		}
+		if (cubes[prevZ][prevX].color != BLACK) {
+			checkExplosion(prevZ, prevX);
+		}
 		prevX = -1;
 		prevZ = -1;
 		moves++;
@@ -524,65 +533,70 @@ void checkClick(float ox, float oz) {
 // TODO CREATE THE IMPLEMENTATION
 // The function that checks for explosion
 void checkExplosion(int x, int z) {
-	int *color;
-	color = &cubes[x][z].color;
+	int color = cubes[x][z].color;
 	printf("_______________________________________________________________\n");
-	printf("Does it explode for cube[%d][%d] with color: %d\n", x, z, *color);
+	printf("Does it explode for cube[%d][%d] with color: %d\n", x, z, color);
+	
+	if ((x + 1) < 15  && cubes[x + 1][z].color == color &&  (x - 1) >=0 && cubes[x - 1][z].color == color) { //Checking 1 on the right and 1 n the left
+		printf("1) Yes  cube[%d][%d] with color: %d exploded with 1 on the right and 1 on the left\n", x, z, color);
+		computeExplosion(x, z, &color, 0);
+		
+	}
+	if ((x + 2) < 15 && cubes[x + 1][z].color == color && cubes[x + 2][z].color == color) { //Checking 2 right
+		printf("2) Yes  cube[%d][%d] with color: %d exploded with 2 on the right\n", x, z, color);
+		computeExplosion(x + 1, z, &color, 0);
+		
+	}
+	if (x - 2 >= 0 && cubes[x - 1][z].color == color && cubes[x - 2][z].color == color) { //Checking 2 left
+		printf("3) Yes  cube[%d][%d] with color: %d exploded with 2 on the left\n", x, z, color);
+		computeExplosion(x - 1, z, &color, 0);
+		
+	}
+	if ((z + 1) < 15 && cubes[x][z + 1].color == color && (z - 1) >= 0 && cubes[x][z - 1].color == color) { //Checking 1 up and 1 down
+		printf("4) Yes  cube[%d][%d] with color: %d exploded with 1 up and 1 down\n", x, z, color);
+		computeExplosion(x, z, &color, 1);
 
-	if ((x + 1) < 15  && cubes[x + 1][z].color == *color &&  (x - 1) >=0 && cubes[x - 1][z].color == *color) { //Checking 1 on the right and 1 n the left
-		printf("1) Yes  cube[%d][%d] with color: %d exploded with 1 on the right and 1 on the left\n", x, z, *color);
-		computeExplosion(x, z, *color, 0);
+	}
+	if ((z + 2) < 15 && cubes[x][z + 1].color == color && cubes[x][z + 2].color == color) { //Checking 2 up
+		printf("5) Yes  cube[%d][%d] with color: %d exploded with 2 up\n", x, z, color);
+		computeExplosion(x, z + 1, &color, 1);
 		
 	}
-	if ((z + 1) < 15 && cubes[x][z + 1].color == *color && (z - 1) >= 0 && cubes[x][z - 1].color == *color) { //Checking 1 up and 1 down
-		printf("2) Yes  cube[%d][%d] with color: %d exploded with 1 up and 1 down\n", x, z, *color);
-		computeExplosion(x, z, *color, 1);
-		
-	}
-	if ((x + 2) < 15 && cubes[x + 1][z].color == *color && cubes[x + 2][z].color == *color) { //Checking 2 right
-		printf("3) Yes  cube[%d][%d] with color: %d exploded with 2 on the right\n", x, z, *color);
-		computeExplosion(x + 1, z, *color, 0);
-		
-	}
-	if (x - 2 >= 0 && cubes[x - 1][z].color == *color && cubes[x - 2][z].color == *color) { //Checking 2 left
-		printf("4) Yes  cube[%d][%d] with color: %d exploded with 2 on the left\n", x, z, *color);
-		computeExplosion(x - 1, z, *color, 0);
-		
-	}
-	if ((z + 2) < 15 && cubes[x][z + 1].color == *color && cubes[x][z + 2].color == *color) { //Checking 2 up
-		printf("5) Yes  cube[%d][%d] with color: %d exploded with 2 up\n", x, z, *color);
-		computeExplosion(x, z + 1, *color, 1);
-		
-	}
-	if ((z - 2) >= 0 && cubes[x][z - 1].color == *color && cubes[x][z - 2].color == *color) { //Checking 2 down
-		printf("6) Yes  cube[%d][%d] with color: %d exploded with 2 down\n", x, z, *color);
-		computeExplosion(x, z - 1, *color, 1);
+	if ((z - 2) >= 0 && cubes[x][z - 1].color == color && cubes[x][z - 2].color == color) { //Checking 2 down
+		printf("6) Yes  cube[%d][%d] with color: %d exploded with 2 down\n", x, z, color);
+		computeExplosion(x, z - 1, &color, 1);
 		
 	}
 }
 // The function that computes the actual explosion
-void computeExplosion(int x, int z, int color , int axis) { //axis is 0 horizontal trio  and 1 for vertical trio
+void computeExplosion(int x, int z, int * color , int axis) { //axis is 0 horizontal trio  and 1 for vertical trio
 	int i, j;
-
+	//------------------------------------------------------------------------------------
 	//LEVEL 0
-	if (axis = 0) { 
-		printf("LEVEL 0: horizontal");
+	if (axis == 0) { 
+		printf("LEVEL 0: horizontal\n");
 		explosion(x, z);
-		explosion(x + 1, z);
-		explosion(x - 1, z);
+		explosion(x + 1 , z );
+		explosion(x - 1 , z );
 	}
-	else if (axis = 1) { 
-		printf("LEVEL 0: vertical");
+	else if (axis == 1) { 
+		printf("LEVEL 0: vertical\n");
 		explosion(x , z);
 		explosion(x , z + 1);
 		explosion(x , z - 1);
 	}
-		
-	/*
+	//------------------------------------------------------------------------------------	
+	//LEVEl 1
 	if (axis == 0) {
-		printf("########HORIZONTAL##########\n");
+		printf("LEVEL 1: horizontal\n");
 		for (i = x - 2; i <= x + 2; i++) {
+			if (i < 0 || i > 14) {
+				continue;
+			}
 			for (j = z - 1; j <= z + 1; j++) {
+				if (j < 0 || j > 14) {
+					continue;
+				}
 				switch (*color)
 				{
 				case RED:
@@ -602,21 +616,28 @@ void computeExplosion(int x, int z, int color , int axis) { //axis is 0 horizont
 					explosion(i, j);
 					break;
 				case SCISSORS:
-					if (cubes[i][j].color == PAPER) {
+					if (cubes[i][j].color == ROCK) {
 						break;
 					}
 					explosion(i, j);
-					break;
+					break;				
 				default:
+					explosion(i, j);
 					break;
 				}
 			}
 		}
 	}
 	if (axis == 1) {
-		printf("@@@@@@@VERTICAL@@@@@@@@@@\n");
+		printf("LEVEL 1: vertical\n");
 		for (i = z - 2; i <= z + 2; i++) {
+			if (i < 0 || i > 14) {
+				continue;
+			}
 			for (j = x - 1; j <= x + 1; j++) {
+				if (j < 0 || j > 14) {
+					continue;
+				}
 				switch (*color)
 				{
 				case RED:
@@ -636,10 +657,53 @@ void computeExplosion(int x, int z, int color , int axis) { //axis is 0 horizont
 					explosion(i, j);
 					break;
 				case SCISSORS:
-					if (cubes[i][j].color == PAPER) {
+					if (cubes[i][j].color == ROCK) {
 						break;
 					}
 					explosion(i, j);
+					break;
+				default:
+					explosion(i, j);
+					break;
+				}
+			}
+		}
+	}
+	//------------------------------------------------------------------------------------
+	//LEVEL 2
+	if (axis == 0) {
+		printf("LEVEL 2: horizontal\n");
+		for (i = x - 4; i <= x + 4; i++) {
+			if (i < 0 || i > 14 ) {
+				continue;
+			}
+			for (j = z - 3; j <= z + 3; j++) {
+				if (j < 0 || j > 14 || ( j >= z - 1 && j <= z + 1 && i >= x - 2 && i <= +2)) {
+					continue;
+				}
+				switch (*color)
+				{
+				case RED:
+					break;
+				case BLUE:
+					break;
+				case ROCK:
+					if (cubes[i][j].color == SCISSORS) {
+						explosion(i, j);
+						break;
+					}				
+					break;
+				case PAPER:
+					if (cubes[i][j].color == ROCK) {
+						explosion(i, j);
+						break;
+					}			
+					break;
+				case SCISSORS:
+					if (cubes[i][j].color == PAPER) {
+						explosion(i, j);
+						break;
+					}
 					break;
 				default:
 					break;
@@ -647,7 +711,48 @@ void computeExplosion(int x, int z, int color , int axis) { //axis is 0 horizont
 			}
 		}
 	}
-	*/
+	//LEVEL 2
+	if (axis == 1) {
+		printf("LEVEL 2: vertical\n");
+		for (i = z - 4; i <= z + 4; i++) {
+			if (i < 0 || i > 14 ){
+				continue;
+			}
+			for (j = x - 3; j <= x + 3; j++) {
+				if (j < 0 || j > 14 || (j >= x - 1 && j <=x + 1 && i >= z - 2 && i <= z + 2)) {
+					continue;
+				}
+				switch (*color)
+				{
+				case RED:
+					break;
+				case BLUE:
+					break;
+				case ROCK:
+					if (cubes[j][i].color == PAPER) {
+						break;
+					}
+					explosion(j, i);
+					break;
+				case PAPER:
+					if (cubes[j][i].color == SCISSORS) {
+						break;
+					}
+					explosion(j, i);
+					break;
+				case SCISSORS:
+					if (cubes[j][i].color == ROCK) {
+						break;
+					}
+					explosion(j, i);
+					break;
+				default:
+					explosion(j, i);
+					break;
+				}
+			}
+		}
+	}
 	return;
 }
 
