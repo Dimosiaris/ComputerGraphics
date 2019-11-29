@@ -40,6 +40,9 @@
 GLuint textures[8]; //the array for our texture
 GLdouble ox = 0.0, oy = 0.0, oz = 0.0; // coordinates
 
+//First explosion for every cube
+int firstExplosion = 0;
+
 // The previous choice of the matrix
 int prevX = -1;
 int prevZ = -1;
@@ -106,11 +109,19 @@ void mySleep(int sleepMs)
 #endif
 }
 
+
+void explosionBonus(int x, int z) {
+	
+}
+
 //alec : 
 void explosion(int x, int z) {
-	//cubes[z][x].color = EXPLOSION;
-	//mySleep(2);
+
+	cubes[x][z].color = EXPLOSION;
+	//mySleep(3000);
 	cubes[x][z].color = BLACK;
+
+	
 }
 
 //alec 5% chance for bomb
@@ -347,10 +358,15 @@ void renderScene(void) {
 	glVertex3f(100.0f, 0.0f, 100.0f);
 	glVertex3f(100.0f, 0.0f, -100.0f);
 	glEnd();
-	char textMoves[20];
-	sprintf_s(textMoves, "Moves: %d", moves);
+	char textMoves[30];
+	sprintf_s(textMoves, "Moves: %d" , moves);
 	glColor3f(1.0f, 0.30f, 1.0f);
-	drawString(24.0, 0.0, 20.0, textMoves);
+	drawString(24.5, 0.0, 20.0, textMoves);
+	glColor3f(1.0f, 1.0f, 1.0f);
+	char textScore[30];
+	sprintf_s(textScore, "Score: %d" , score);
+	glColor3f(1.0f, 0.30f, 1.0f);
+	drawString(23.8, 0.0, 20.0, textScore);
 	glColor3f(1.0f, 1.0f, 1.0f);
 
 
@@ -379,7 +395,20 @@ void renderScene(void) {
 			glTranslatef(0.0f, 0.0f, 1.5f);
 		}
 	}
-
+	//One time only 
+	if (!firstExplosion) { //flag
+		for (int i = 0; i < 15; i++) {
+			for (int j = 0; j < 15; j++) {
+				if (cubes[i][j].color == BOMB || cubes[i][j].color == BLACK) {
+					continue;
+				}
+				else {
+					checkExplosion(i, j);
+				}
+			}
+		}
+		firstExplosion = 1;
+	}
 	glutSwapBuffers();
 }
 
@@ -578,12 +607,14 @@ void computeExplosion(int x, int z, int * color , int axis) { //axis is 0 horizo
 		explosion(x, z);
 		explosion(x + 1 , z );
 		explosion(x - 1 , z );
+		score += 10;
 	}
 	else if (axis == 1) { 
 		printf("LEVEL 0: vertical\n");
 		explosion(x , z);
 		explosion(x , z + 1);
 		explosion(x , z - 1);
+		score += 10;
 	}
 	//------------------------------------------------------------------------------------	
 	//LEVEl 1
@@ -600,29 +631,61 @@ void computeExplosion(int x, int z, int * color , int axis) { //axis is 0 horizo
 				switch (*color)
 				{
 				case RED:
+					if (cubes[i][j].color == BOMB) {
+						explosion(i, j);
+						score -= 30;
+						break;
+					}
+					score--;
 					break;
 				case BLUE:
+					if (cubes[i][j].color == BOMB) {
+						explosion(i, j);
+						score -= 30;
+						break;
+					}
+					score--;
 					break;
 				case ROCK:
+					if (cubes[i][j].color == BOMB) {
+						explosion(i, j);
+						score -= 30;
+						break;
+					}
 					if (cubes[i][j].color == PAPER) {
+						score--;
 						break;
 					}
 					explosion(i, j);
+					score += 2;
 					break;
 				case PAPER:
+					if (cubes[i][j].color == BOMB) {
+						explosion(i, j);
+						score -= 30;
+						break;
+					}
 					if (cubes[i][j].color == SCISSORS) {
+						score--;
 						break;
 					}
 					explosion(i, j);
+					score += 2;
 					break;
 				case SCISSORS:
+					if (cubes[i][j].color == BOMB) {
+						explosion(i, j);
+						score -= 30;
+						break;
+					}
 					if (cubes[i][j].color == ROCK) {
+						score--;
 						break;
 					}
 					explosion(i, j);
+					score += 2;
 					break;				
 				default:
-					explosion(i, j);
 					break;
 				}
 			}
@@ -641,29 +704,61 @@ void computeExplosion(int x, int z, int * color , int axis) { //axis is 0 horizo
 				switch (*color)
 				{
 				case RED:
+					if (cubes[j][i].color == BOMB) {
+						explosion(j, i);
+						score -= 30;
+						break;
+					}
+					score--;
 					break;
 				case BLUE:
+					if (cubes[j][i].color == BOMB) {
+						explosion(j, i);
+						score -= 30;
+						break;
+					}
+					score--;
 					break;
 				case ROCK:
-					if (cubes[i][j].color == PAPER) {
+					if (cubes[j][i].color == BOMB) {
+						explosion(j, i);
+						score -= 30;
 						break;
 					}
-					explosion(i, j);
+					if (cubes[j][i].color == PAPER) {
+						score--;
+						break;
+					}
+					explosion(j, i);
+					score += 2;
 					break;
 				case PAPER:
-					if (cubes[i][j].color == SCISSORS) {
+					if (cubes[j][i].color == BOMB) {
+						explosion(j, i);
+						score -= 30;
 						break;
 					}
-					explosion(i, j);
+					if (cubes[j][i].color == SCISSORS) {
+						score--;
+						break;
+					}
+					explosion(j, i);
+					score += 2;
 					break;
 				case SCISSORS:
-					if (cubes[i][j].color == ROCK) {
+					if (cubes[j][i].color == BOMB) {
+						explosion(j, i);
+						score -= 30;
 						break;
 					}
-					explosion(i, j);
+					if (cubes[j][i].color == ROCK) {
+						score--;
+						break;
+					}
+					explosion(j, i);
+					score += 2;
 					break;
 				default:
-					explosion(i, j);
 					break;
 				}
 			}
@@ -678,7 +773,7 @@ void computeExplosion(int x, int z, int * color , int axis) { //axis is 0 horizo
 				continue;
 			}
 			for (j = z - 3; j <= z + 3; j++) {
-				if (j < 0 || j > 14 || ( j >= z - 1 && j <= z + 1 && i >= x - 2 && i <= +2)) {
+				if (j < 0 || j > 14 || ( j >= z - 1 && j <= z + 1 && i >= x - 2 && i <= x + 2)) {
 					continue;
 				}
 				switch (*color)
@@ -690,18 +785,21 @@ void computeExplosion(int x, int z, int * color , int axis) { //axis is 0 horizo
 				case ROCK:
 					if (cubes[i][j].color == SCISSORS) {
 						explosion(i, j);
+						score += 3;
 						break;
 					}				
 					break;
 				case PAPER:
 					if (cubes[i][j].color == ROCK) {
 						explosion(i, j);
+						score += 3;
 						break;
 					}			
 					break;
 				case SCISSORS:
 					if (cubes[i][j].color == PAPER) {
 						explosion(i, j);
+						score += 3;
 						break;
 					}
 					break;
@@ -729,25 +827,27 @@ void computeExplosion(int x, int z, int * color , int axis) { //axis is 0 horizo
 				case BLUE:
 					break;
 				case ROCK:
-					if (cubes[j][i].color == PAPER) {
+					if (cubes[j][i].color == SCISSORS) {
+						explosion(j, i);
+						score += 3;
 						break;
-					}
-					explosion(j, i);
+					}		
 					break;
 				case PAPER:
-					if (cubes[j][i].color == SCISSORS) {
+					if (cubes[j][i].color == ROCK) {
+						explosion(j, i);
+						score += 3;
 						break;
-					}
-					explosion(j, i);
+					}	
 					break;
 				case SCISSORS:
-					if (cubes[j][i].color == ROCK) {
+					if (cubes[j][i].color == PAPER) {
+						explosion(j, i);
+						score += 3;
 						break;
 					}
-					explosion(j, i);
 					break;
 				default:
-					explosion(j, i);
 					break;
 				}
 			}
