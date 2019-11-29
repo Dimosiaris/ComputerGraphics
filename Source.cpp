@@ -1,11 +1,12 @@
-//alec
+//ALEXANDROS FILIOS 3141
+//THANASIS DIMOSIARIS 3216
 #ifdef LINUX
 #include <unistd.h>
 #endif
 #ifdef WINDOWS
 #include <windows.h>
 #endif
-#include <GL/glew.h>  // need to be included before gl too avoid errors
+//#include <GL/glew.h>  // need to be included before gl too avoid errors
 #include <GL/glut.h>  // GLUT, include glu.h and gl.h
 #include <math.h>
 #include <stdio.h>
@@ -15,7 +16,7 @@
 #include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-#include <windows.h>
+#include <unistd.h>
 
 
 
@@ -99,26 +100,22 @@ void checkClick(float oz, float ox);
 //alec
 
 
-void mySleep(int sleepMs)
+void mySleep(int time)
 {
 #ifdef LINUX
-	sleep();
+	sleep(time);
 #endif
 #ifdef WINDOWS
-	Sleep();
+	Sleep(time);
 #endif
 }
 
 
-void explosionBonus(int x, int z) {
-	
-}
 
 //alec : 
 void explosion(int x, int z) {
 
 	cubes[x][z].color = EXPLOSION;
-	//mySleep(3000);
 	cubes[x][z].color = BLACK;
 
 	
@@ -359,12 +356,12 @@ void renderScene(void) {
 	glVertex3f(100.0f, 0.0f, -100.0f);
 	glEnd();
 	char textMoves[30];
-	sprintf_s(textMoves, "Moves: %d" , moves);
+	sprintf(textMoves, "Moves: %d" , moves);
 	glColor3f(1.0f, 0.30f, 1.0f);
 	drawString(24.5, 0.0, 20.0, textMoves);
 	glColor3f(1.0f, 1.0f, 1.0f);
 	char textScore[30];
-	sprintf_s(textScore, "Score: %d" , score);
+	sprintf(textScore, "Score: %d" , score);
 	glColor3f(1.0f, 0.30f, 1.0f);
 	drawString(23.8, 0.0, 20.0, textScore);
 	glColor3f(1.0f, 1.0f, 1.0f);
@@ -396,7 +393,7 @@ void renderScene(void) {
 		}
 	}
 	//One time only 
-	if (!firstExplosion) { //flag
+	if (!firstExplosion && gameStarted==1) { //flag
 		for (int i = 0; i < 15; i++) {
 			for (int j = 0; j < 15; j++) {
 				if (cubes[i][j].color == BOMB || cubes[i][j].color == BLACK) {
@@ -555,6 +552,10 @@ void checkClick(float ox, float oz) {
 		prevX = -1;
 		prevZ = -1;
 		moves++;
+		if(moves==30){
+			printf("GAME OVER\n");
+			exit(0);
+		}
 		return;
 	}
 }
@@ -925,6 +926,8 @@ int main(int argc, char** argv) {
 	initGL();
 
 	glutMouseFunc(Mouse);
+
+
 
 	// enter GLUT event processing cycle
 	glutMainLoop();
